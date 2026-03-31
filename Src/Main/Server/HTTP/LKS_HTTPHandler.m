@@ -15,11 +15,7 @@
 #import "LKS_ConnectionManager.h"
 #import "NSObject+LookinServer.h"
 #import "LookinAttrType.h"
-#import "LKS_GestureTargetActionsSearcher.h"
-#import "LookinWeakContainer.h"
-#import "LookinTuple.h"
 #import <UIKit/UIKit.h>
-#import <objc/runtime.h>
 
 static const uint16_t kLKS_HTTPPort = 47190;
 
@@ -82,20 +78,6 @@ static const uint16_t kLKS_HTTPPort = 47190;
             completion([self _handleGetScreenshotForOid:request.oidParam]);
             return;
         }
-    }
-
-    // /view/:oid/tap
-    if (request.oidParam > 0 && [path hasSuffix:@"/tap"]) {
-        if ([method isEqualToString:@"POST"]) {
-            completion([self _handleTapForOid:request.oidParam]);
-            return;
-        }
-    }
-
-    // /console/invoke
-    if ([method isEqualToString:@"POST"] && [path isEqualToString:@"/console/invoke"]) {
-        completion([self _handleConsoleInvokeWithBody:request.jsonBody]);
-        return;
     }
 
     completion([LKS_HTTPResponse errorWithMessage:@"Not found" statusCode:404]);
@@ -416,69 +398,6 @@ static const uint16_t kLKS_HTTPPort = 47190;
     }
 }
 
-#pragma mark - /view/:oid/tap (POST)
-
-- (LKS_HTTPResponse *)_handleTapForOid:(unsigned long)oid {
-    NSObject *obj = [NSObject lks_objectWithOid:oid];
-    if (!obj) {
-        return [LKS_HTTPResponse errorWithMessage:[NSString stringWithFormat:@"Object with oid %lu not found", oid] statusCode:404];
-    }
-    if (![obj isKindOfClass:[UIView class]]) {
-        return [LKS_HTTPResponse errorWithMessage:@"Object is not a UIView" statusCode:400];
-    }
-
-    UIView *view = (UIView *)obj;
-    if (!view.userInteractionEnabled) {
-        return [LKS_HTTPResponse errorWithMessage:@"userInteractionEnabled is NO" statusCode:400];
-    }
-
-    __block NSString *tapMethod = nil;
-
-    // 优先走 UIControl 的 sendActionsForControlEvents:
-    if ([view isKindOfClass:[UIControl class]]) {
-        UIControl *control = (UIControl *)view;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [control sendActionsForControlEvents:UIControlEventTouchUpInside];
-        });
-        tapMethod = @"UIControl.sendActionsForControlEvents(TouchUpInside)";
-    } else {
-        // 找第一个可用的 UITapGestureRecognizer，直接调用其 target-action
-        UITapGestureRecognizer *tapGR = nil;
-        for (UIGestureRecognizer *gr in view.gestureRecognizers) {
-            if ([gr isKindOfClass:[UITapGestureRecognizer class]] && gr.enabled) {
-                tapGR = (UITapGestureRecognizer *)gr;
-                break;
-            }
-        }
-        if (!tapGR) {
-            return [LKS_HTTPResponse errorWithMessage:@"No UIControl and no enabled UITapGestureRecognizer found on this view" statusCode:400];
-        }
-
-        NSArray<LookinTwoTuple *> *targetActions = [LKS_GestureTargetActionsSearcher getTargetActionsFromRecognizer:tapGR];
-        if (!targetActions.count) {
-            return [LKS_HTTPResponse errorWithMessage:@"UITapGestureRecognizer has no target-action" statusCode:400];
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            for (LookinTwoTuple *tuple in targetActions) {
-                NSObject *target = ((LookinWeakContainer *)tuple.first).object;
-                NSString *actionStr = (NSString *)tuple.second;
-                if (!target || !actionStr.length) continue;
-                SEL sel = NSSelectorFromString(actionStr);
-                if ([target respondsToSelector:sel]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-                    [target performSelector:sel withObject:tapGR];
-#pragma clang diagnostic pop
-                }
-            }
-        });
-        tapMethod = [NSString stringWithFormat:@"UITapGestureRecognizer(%@)", NSStringFromClass(tapGR.class)];
-    }
-
-    return [LKS_HTTPResponse okWithData:@{ @"tapped": @YES, @"method": tapMethod }];
-}
-
 #pragma mark - /view/:oid/screenshot (GET)
 
 - (LKS_HTTPResponse *)_handleGetScreenshotForOid:(unsigned long)oid {
@@ -529,79 +448,6 @@ static const uint16_t kLKS_HTTPPort = 47190;
         @"width": @(bounds.size.width),
         @"height": @(bounds.size.height)
     }];
-}
-
-#pragma mark - /console/invoke (POST)
-
-- (LKS_HTTPResponse *)_handleConsoleInvokeWithBody:(NSDictionary *)body {
-    NSNumber *oidNum = body[@"oid"];
-    NSString *methodName = body[@"method"];
-    if (!oidNum || !methodName.length) {
-        return [LKS_HTTPResponse errorWithMessage:@"Required fields: oid (number), method (string)" statusCode:400];
-    }
-
-    unsigned long oid = [oidNum unsignedLongValue];
-    NSObject *obj = [NSObject lks_objectWithOid:oid];
-    if (!obj) {
-        return [LKS_HTTPResponse errorWithMessage:[NSString stringWithFormat:@"Object with oid %lu not found", oid] statusCode:404];
-    }
-
-    SEL selector = NSSelectorFromString(methodName);
-    if (!selector || ![obj respondsToSelector:selector]) {
-        return [LKS_HTTPResponse errorWithMessage:[NSString stringWithFormat:@"%@ does not respond to selector '%@'", NSStringFromClass(obj.class), methodName] statusCode:400];
-    }
-
-    NSMethodSignature *sig = [obj methodSignatureForSelector:selector];
-    if (sig.numberOfArguments > 2) {
-        return [LKS_HTTPResponse errorWithMessage:@"Methods with arguments are not supported" statusCode:400];
-    }
-
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
-    [invocation setTarget:obj];
-    [invocation setSelector:selector];
-    [invocation invoke];
-
-    const char *returnType = [sig methodReturnType];
-    NSString *resultDescription = @"(void)";
-
-    if (strcmp(returnType, @encode(void)) != 0) {
-        if (strcmp(returnType, @encode(BOOL)) == 0) {
-            BOOL v; [invocation getReturnValue:&v];
-            resultDescription = v ? @"YES" : @"NO";
-        } else if (strcmp(returnType, @encode(int)) == 0) {
-            int v; [invocation getReturnValue:&v];
-            resultDescription = [NSString stringWithFormat:@"%d", v];
-        } else if (strcmp(returnType, @encode(long)) == 0) {
-            long v; [invocation getReturnValue:&v];
-            resultDescription = [NSString stringWithFormat:@"%ld", v];
-        } else if (strcmp(returnType, @encode(double)) == 0) {
-            double v; [invocation getReturnValue:&v];
-            resultDescription = [NSString stringWithFormat:@"%g", v];
-        } else if (strcmp(returnType, @encode(float)) == 0) {
-            float v; [invocation getReturnValue:&v];
-            resultDescription = [NSString stringWithFormat:@"%g", v];
-        } else if (strcmp(returnType, @encode(CGRect)) == 0) {
-            CGRect v; [invocation getReturnValue:&v];
-            resultDescription = NSStringFromCGRect(v);
-        } else if (strcmp(returnType, @encode(CGPoint)) == 0) {
-            CGPoint v; [invocation getReturnValue:&v];
-            resultDescription = NSStringFromCGPoint(v);
-        } else if (strcmp(returnType, @encode(CGSize)) == 0) {
-            CGSize v; [invocation getReturnValue:&v];
-            resultDescription = NSStringFromCGSize(v);
-        } else {
-            NSString *argType = [NSString stringWithUTF8String:returnType];
-            if ([argType hasPrefix:@"@"]) {
-                __unsafe_unretained id retObj;
-                [invocation getReturnValue:&retObj];
-                resultDescription = retObj ? [NSString stringWithFormat:@"%@", retObj] : @"nil";
-            } else {
-                resultDescription = [NSString stringWithFormat:@"(unrecognized return type: %s)", returnType];
-            }
-        }
-    }
-
-    return [LKS_HTTPResponse okWithData:@{ @"result": resultDescription }];
 }
 
 @end
