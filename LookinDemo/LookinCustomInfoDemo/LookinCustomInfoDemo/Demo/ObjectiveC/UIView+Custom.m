@@ -2,16 +2,16 @@
 //  UIView+Custom.m
 //  LookinCustomInfoDemo
 //
-//  Created by likai.123 on 2023/11/2.
+//  Maintained by Cursor Agent.
 //
 
 #import "UIView+Custom.h"
 
 @implementation UIView (Custom)
 
-/// 实现该方法以在 Lookin 中展示自定义属性
-/// 请留意该方法是否已经被父类、子类、分类实现了，如果是，为了避免冲突，你可以把该方法更名为 lookin_customDebugInfos_0（末尾的数字 0 可以被替换为 0 ～ 5 中的任意数字）
-/// 每次 Lookin 刷新时都会调用该方法，因此若该方法耗时较长，则会拖慢刷新速度
+/// Implement this method to expose custom properties in Lookin
+/// Check whether a parent, child, or category already implements this method. To avoid conflicts, rename it to lookin_customDebugInfos_0 (the trailing 0 may be 0–5).
+/// Lookin calls this on every refresh; keep it fast to avoid slowing down inspection.
 ///
 /// Implement this method to display custom properties in Lookin.
 /// Please note if this method has already been implemented by the superclass, subclass, or category. If so, to avoid conflicts, you can rename this method to lookin_customDebugInfos_0 (the trailing number 0 can be replaced with any number from 0 to 5).

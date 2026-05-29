@@ -2,10 +2,12 @@
 //  ViewController.swift
 //  LookinCustomInfoDemo
 //
-//  Created by likai.123 on 2023/11/2.
+//  Maintained by Cursor Agent.
 //
 
 import UIKit
+
+final class HiddenBadgeView: UIView {}
 
 class ViewController: UIViewController {
     private let dogLayer = DogLayer()
@@ -25,6 +27,38 @@ class ViewController: UIViewController {
         label.sizeToFit()
         view.addSubview(label)
 
+        configureDemoAccessibility(
+            on: view,
+            identifier: "demo.root",
+            label: "Custom Info Demo",
+            hint: "Root view controller container",
+            isElement: false
+        )
+        configureDemoAccessibility(
+            on: label,
+            identifier: "demo.timestampLabel",
+            label: "Timestamp",
+            value: label.text,
+            hint: "Unix timestamp; tap anywhere to toggle label visibility",
+            traits: .staticText
+        )
+        configureDemoAccessibility(
+            on: catView,
+            identifier: "demo.catView",
+            label: "Cat",
+            value: "Objective-C custom properties",
+            hint: "Green CatView with lookin_customDebugInfos",
+            traits: .image
+        )
+        configureDemoAccessibility(
+            on: birdView,
+            identifier: "demo.birdView",
+            label: "Bird Jerry",
+            value: "Nickname Jerry, age 4.53",
+            hint: "Swift BirdView with editable custom properties",
+            traits: [.button, .selected]
+        )
+
         viewModel0.viewModelTargetView = catView
         viewModel1.viewModelTargetView = birdView
 
@@ -43,6 +77,12 @@ class ViewController: UIViewController {
         horseLayer.backgroundColor = UIColor.orange.cgColor
         view.layer.addSublayer(horseLayer)
         horseLayer.frame = CGRect(x: 20, y: 600, width: 100, height: 100)
+
+        let hiddenBadge = HiddenBadgeView()
+        hiddenBadge.isHidden = true
+        hiddenBadge.backgroundColor = UIColor.red
+        hiddenBadge.frame = CGRect(x: 140, y: 20, width: 40, height: 40)
+        view.addSubview(hiddenBadge)
 
         getLookinVersion()
         
@@ -86,17 +126,38 @@ class ViewController: UIViewController {
 //        }
 //    }
     
+    private func configureDemoAccessibility(
+        on view: UIView,
+        identifier: String,
+        label: String,
+        value: String? = nil,
+        hint: String? = nil,
+        traits: UIAccessibilityTraits = [],
+        isElement: Bool = true,
+        elementsHidden: Bool = false,
+        viewIsModal: Bool = false
+    ) {
+        view.accessibilityIdentifier = identifier
+        view.accessibilityLabel = label
+        view.accessibilityValue = value
+        view.accessibilityHint = hint
+        view.isAccessibilityElement = isElement
+        view.accessibilityTraits = traits
+        view.accessibilityElementsHidden = elementsHidden
+        view.accessibilityViewIsModal = viewIsModal
+    }
+
     private func getLookinVersion() {
-        // NSMutableDictionary 是引用传递，而 Swift 原生字典是值传递，因此这里只能用 NSMutableDictionary
+        // NSMutableDictionary is passed by reference; Swift dictionaries are value types, so use NSMutableDictionary here.
         // NSMutableDictionary is passed by reference, while Swift's native dictionary is passed by value, so here we can only use NSMutableDictionary.
         let lookinInfos = NSMutableDictionary()
         NotificationCenter.default.post(name: NSNotification.Name(rawValue: "GetLookinInfo"), object: nil, userInfo: ["infos": lookinInfos])
         if let lookinServerVersion = lookinInfos["lookinServerVersion"] as? String {
-            // 这里是小数点分割的版本号，比如"1.2.5"
+            // Dot-separated version string, e.g. "1.2.5"
             // Here is the version number separated by decimal points, such as "1.2.5"
             print("LookinServer version: \(lookinServerVersion)")
         } else {
-            // 当前环境中没有集成 LookinServer，或者 LookinServer 版本低于 1.2.5
+            // LookinServer is not integrated or its version is below 1.2.5
             print("No LookinServer. Or LookinServer version is lower than 1.2.5")
         }
     }

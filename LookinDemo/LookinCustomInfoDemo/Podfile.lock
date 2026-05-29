@@ -1,18 +1,21 @@
 PODS:
-  - LookinServer/Core (1.2.7)
-  - LookinServer/Swift (1.2.7):
-    - LookinServer/Core
+  - LookinServer/MCP (1.2.8):
+    - LookinServer/Swift
+  - LookinServer/Server (1.2.8)
+  - LookinServer/Swift (1.2.8):
+    - LookinServer/Server
 
 DEPENDENCIES:
-  - LookinServer/Swift (from `../../`)
+  - LookinServer/MCP (from `/Users/macbook/Work/Lookin/LookinServer`)
+  - LookinServer/Swift (from `/Users/macbook/Work/Lookin/LookinServer`)
 
 EXTERNAL SOURCES:
   LookinServer:
-    :path: "../../"
+    :path: "/Users/macbook/Work/Lookin/LookinServer"
 
 SPEC CHECKSUMS:
-  LookinServer: fccc36fcab6ea15ae70692872877add9ce005f56
+  LookinServer: 9b69dbaa3dfa102af2a824b395acf2b255be0821
 
-PODFILE CHECKSUM: 46caada19d34f471f9e44165d96af39e799fd091
+PODFILE CHECKSUM: b481a69d21cecb5ce1a3b8d0e38b96d507085e78
 
-COCOAPODS: 1.13.0
+COCOAPODS: 1.16.2

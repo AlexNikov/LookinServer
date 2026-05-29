@@ -2,7 +2,7 @@
 //  DogLayer.h
 //  LookinCustomInfoDemo
 //
-//  Created by likai.123 on 2023/11/2.
+//  Maintained by Cursor Agent.
 //
 
 #import <UIKit/UIKit.h>

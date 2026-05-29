@@ -1,5 +1,0 @@
-use_frameworks!
-
-target 'TestVisionOS' do
-    pod 'LookinServer', :path=>'../../', :subspecs => ['Swift'], :configurations => ['Debug']
-end

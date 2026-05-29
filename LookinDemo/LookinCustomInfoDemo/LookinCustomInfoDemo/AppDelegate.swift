@@ -2,18 +2,19 @@
 //  AppDelegate.swift
 //  LookinCustomInfoDemo
 //
-//  Created by likai.123 on 2023/11/2.
+//  Maintained by Cursor Agent.
 //
 
 import UIKit
+import LookinServer
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
-
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        _ = LookinServerEntry.self
+        _ = LKS_ConnectionManager.sharedInstance
+        LookinDiagLog.log("demo launch bundle=\(Bundle.main.bundleIdentifier ?? "?") LookinServer+MCP")
         return true
     }
 
@@ -30,7 +31,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
     }
-
 
 }
 

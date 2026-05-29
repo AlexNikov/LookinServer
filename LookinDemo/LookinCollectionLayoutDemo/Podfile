@@ -1,0 +1,8 @@
+platform :ios, '16.0'
+use_frameworks!
+
+LOOKIN_SERVER_ROOT = File.expand_path('../../../LookinServer', __dir__)
+
+target 'LookinCollectionLayoutDemo' do
+  pod 'LookinServer', :path => LOOKIN_SERVER_ROOT, :subspecs => ['Swift', 'MCP']
+end

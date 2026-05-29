@@ -14,6 +14,7 @@
 		A76A15BE28F43C9300086B38 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A76A15BC28F43C9300086B38 /* Main.storyboard */; };
 		A76A15C028F43C9300086B38 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A76A15BF28F43C9300086B38 /* Assets.xcassets */; };
 		A76A15C328F43C9300086B38 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A76A15C128F43C9300086B38 /* LaunchScreen.storyboard */; };
+		851EA848B943495D83CE3EB2 /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = C7591FB6711D4BA8A5758022 /* LookinDemoObjCBorder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
 		A76A15BF28F43C9300086B38 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A76A15C228F43C9300086B38 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A76A15C428F43C9300086B38 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C7591FB6711D4BA8A5758022 /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,6 +45,7 @@
 			isa = PBXGroup;
 			children = (
 				A76A15B528F43C9300086B38 /* LookinDemoSwift */,
+				1FD888BC8A5849C9854C6B2C /* LookinDemoSharedObjC */,
 				A76A15B428F43C9300086B38 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -67,6 +70,15 @@
 				A76A15C428F43C9300086B38 /* Info.plist */,
 			);
 			path = LookinDemoSwift;
+			sourceTree = "<group>";
+		};
+		1FD888BC8A5849C9854C6B2C /* LookinDemoSharedObjC */ = {
+			isa = PBXGroup;
+			children = (
+				C7591FB6711D4BA8A5758022 /* LookinDemoObjCBorder.m */,
+			);
+			name = LookinDemoSharedObjC;
+			path = ../Shared/ObjectiveC;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -146,6 +158,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				851EA848B943495D83CE3EB2 /* LookinDemoObjCBorder.m in Sources */,
 				A76A15BB28F43C9300086B38 /* ViewController.swift in Sources */,
 				A76A15B728F43C9300086B38 /* AppDelegate.swift in Sources */,
 				A76A15B928F43C9300086B38 /* SceneDelegate.swift in Sources */,

@@ -2,16 +2,16 @@
 //  DogLayer.m
 //  LookinCustomInfoDemo
 //
-//  Created by likai.123 on 2023/11/2.
+//  Maintained by Cursor Agent.
 //
 
 #import "DogLayer.h"
 
 @implementation DogLayer
 
-/// 实现该方法以在 Lookin 中展示自定义属性
-/// 请留意该方法是否已经被父类、子类、分类实现了，如果是，为了避免冲突，你可以把该方法更名为 lookin_customDebugInfos_0（末尾的数字 0 可以被替换为 0 ～ 5 中的任意数字）
-/// 每次 Lookin 刷新时都会调用该方法，因此若该方法耗时较长，则会拖慢刷新速度
+/// Implement this method to expose custom properties in Lookin
+/// Check whether a parent, child, or category already implements this method. To avoid conflicts, rename it to lookin_customDebugInfos_0 (the trailing 0 may be 0–5).
+/// Lookin calls this on every refresh; keep it fast to avoid slowing down inspection.
 ///
 /// Implement this method to display custom properties in Lookin.
 /// Please note if this method has already been implemented by the superclass, subclass, or category. If so, to avoid conflicts, you can rename this method to lookin_customDebugInfos_0 (the trailing number 0 can be replaced with any number from 0 to 5).
@@ -20,7 +20,7 @@
 /// https://bytedance.feishu.cn/docx/TRridRXeUoErMTxs94bcnGchnlb
 - (NSDictionary<NSString *, id> *)lookin_customDebugInfos {
     NSDictionary<NSString *, id> *ret = @{
-        // 这些信息会在 Lookin 的右侧属性面板中被展示。
+        // Shown in Lookin's right-hand attribute panel.
         // These details will be displayed in the right-hand property panel of Lookin.
         @"properties": [self dogLayer_makeCustomProperties],
     };
@@ -32,20 +32,20 @@
     
     // string property
     [properties addObject:@{
-        // 可选项。 在 Lookin 中展示的属性组的名称。
+        // Optional. Property group title shown in Lookin.
         // Optional. The name of the property group displayed in Lookin.
         @"section": @"DogInfo",
-        // 必填项。在 Lookin 中展示的属性的名称。
+        // Required. Property title shown in Lookin.
         // Required. The name of the property displayed in Lookin.
         @"title": @"Nickname",
-        // 可选项。在 Lookin 中展示的属性的值。如果属性值为 nil 则不要设置该项，否则 NSDictionary 可能由于插入 nil 而 Crash。
+        // Optional. Property value shown in Lookin. Omit when nil to avoid NSDictionary crashes.
         // Optional. The value of the property displayed in Lookin. If the property value is nil, do not set this item, otherwise NSDictionary may crash due to inserting nil.
         @"value": @"Sushi",
-        // 必填项。告知 Lookin 以 String 格式解析和展示该属性。
+        // Required. Tells Lookin to parse and display the property as a String.
         // Required. Specify the format in which Lookin should parse and display the property.
         @"valueType": @"string",
-        // 可选项。如果配置了该字段，则用户可以在 Lookin 中实时修改该属性。
-        //【警告】这个 block 会被 Lookin 始终持有，因此请万分注意内存管理。
+        // Optional. When set, the property can be edited live in Lookin.
+        //[Warning] Lookin retains this block — watch memory management.
         // Optional. If this field is configured, users can modify the property by Lookin.
         // [Warning] This block will be retained by Lookin indefinitely, so please be extremely careful with memory management.
         @"retainedSetter": ^(NSString *newString) {
@@ -138,7 +138,7 @@
             @"opacity": @0.5,
             @"offset": [NSValue valueWithCGSize:CGSizeMake(5, 10)],
             @"radius": @2.5,
-            // 可选项，没有该项则表示颜色为 nil
+            // Optional; omit when the color is nil
             // Optional. Do not set this item when the shadow color is nil.
             @"color": UIColor.redColor
         },
@@ -151,7 +151,7 @@
         @"title": @"Type",
         @"value": @"Corgi",
         @"valueType": @"enum",
-        // 当 valueType 为 enum 时，必须设置该项，内容为所有可用的 enum 值。
+        // Required for enum valueType: all allowed enum values.
         // When valueType is "enum", this item must be set, with the content being all available enum cases.
         @"allEnumCases": @[@"Corgi", @"Samoyed", @"Golden Retriever", @"Teddy"],
         @"retainedSetter": ^(NSString *newValue) {
@@ -171,9 +171,8 @@
 }
 
 /*
- JSON 的结构要求：只能有 “title”、“desc”、“details” 3 种 Key，“title”和“desc”的值必须是字符串，“details”的值必须是数组。
- 
- The structure requirements of JSON are as follows. There are only three types of keys: "title", "desc", and "details". The value of "title" and "desc" must be a string, and the value of "details" must be an array.
+ JSON may only use "title", "desc", and "details" keys.
+ "title" and "desc" must be strings; "details" must be an array.
  */
 - (NSString *)createSomeJson {
     NSArray *arr = @[

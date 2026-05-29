@@ -13,12 +13,55 @@ To use Lookin macOS app, you need to integrate LookinServer (iOS Framework of Lo
 > 2. Do not use versions earlier than 1.0.6, as it contains a critical bug that could lead to online incidents in your project: https://qxh1ndiez2w.feishu.cn/wiki/Z9SpwT7zWiqvYvkBe7Lc6Disnab
 
 ## via CocoaPods:
+
+**One pod** — `LookinServer` (subspecs `Swift` / `MCP` are optional build flags, not separate pods). Legacy modular podspecs (`LookinServerCore`, `LookinServerBase`, …) were removed in 1.2.8; use `LookinServer` instead.
+
 ### Swift Project
 `pod 'LookinServer', :subspecs => ['Swift'], :configurations => ['Debug']`
 ### Objective-C Project
 `pod 'LookinServer', :configurations => ['Debug']`
 ## via Swift Package Manager:
 `https://github.com/QMUI/LookinServer/`
+
+## MCP (Model Context Protocol) — Debug only
+
+This fork adds an HTTP API on `127.0.0.1:47190` (compatible with [lookin-mcp-ios](https://github.com/hepiao3/lookin-mcp)) for AI agents in Cursor / Claude Code.
+
+### CocoaPods
+```ruby
+pod 'LookinServer', :subspecs => ['Swift', 'MCP'], :configurations => ['Debug']
+```
+
+### Cursor
+```json
+{
+  "mcpServers": {
+    "lookin": {
+      "command": "npx",
+      "args": ["-y", "lookin-mcp-ios"]
+    }
+  }
+}
+```
+
+Run your app in **Debug** on simulator, then:
+```bash
+curl http://127.0.0.1:47190/status
+curl http://127.0.0.1:47190/hierarchy
+```
+
+Sample app: `LookinDemo/LookinMCPSample/` (SPM + CocoaPods). See [LookinMCPSample README](LookinDemo/LookinMCPSample/README.md).
+
+### HTTP routes
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/status` | App name, bundle id, screen metrics |
+| GET | `/hierarchy` | View/layer tree |
+| GET | `/view/:oid/attributes` | Attribute groups |
+| POST | `/view/:oid/attributes` | Modify attribute |
+| GET | `/view/:oid/screenshot` | PNG base64 |
+
+Swift runtime lives in `Sources/LookinServer*` (wire v2 only), including ivar trace (`LookinServerBase`) and `LookinObjCExceptionCatch.m` + `LookinObjCExceptionBridge.swift`; see [`Sources/README.md`](Sources/README.md).
 
 # Repository
 LookinServer: https://github.com/QMUI/LookinServer
@@ -48,6 +91,8 @@ Lookin 可以查看与修改 iOS App 里的 UI 对象，类似于 Xcode 自带�
 > 1. 不要在 AppStore 模式下集成 LookinServer。
 > 2. 不要使用早于 1.0.6 的版本，因为它包含一个严重 Bug，可能导致线上事故: https://qxh1ndiez2w.feishu.cn/wiki/Z9SpwT7zWiqvYvkBe7Lc6Disnab
 ## 通过 CocoaPods：
+
+**单一 Pod** — `LookinServer`（subspecs `Swift` / `MCP` 为可选编译选项，非独立 Pod）。1.2.8 起已移除模块化 podspec（`LookinServerCore`、`LookinServerBase` 等），请改用 `LookinServer`。
 
 ### Swift 项目
 `pod 'LookinServer', :subspecs => ['Swift'], :configurations => ['Debug']`

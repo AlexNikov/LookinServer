@@ -1,5 +1,12 @@
+platform :ios, '17.0'
 use_frameworks!
 
+# Avoid hanging on `pod update --repo-update`; local pod needs no specs refresh.
+install! 'cocoapods', :warn_for_unused_master_specs_repo => false
+
+# Local LookinServer from this repo (LookinServer/LookinServer.podspec)
+LOOKIN_SERVER_ROOT = File.expand_path('../..', __dir__)
+
 target 'LookinCustomInfoDemo' do
-    pod 'LookinServer', :path=>'../../', :subspecs => ['Swift'], :configurations => ['Debug']
+  pod 'LookinServer', :path => LOOKIN_SERVER_ROOT, :subspecs => ['Swift', 'MCP']
 end

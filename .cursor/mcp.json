@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lookin": {
+      "command": "npx",
+      "args": ["-y", "lookin-mcp-ios"]
+    }
+  }
+}

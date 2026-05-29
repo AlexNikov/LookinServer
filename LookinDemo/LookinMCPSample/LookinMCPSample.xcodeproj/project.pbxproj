@@ -1,0 +1,341 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 55;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000032AFFF7E300061A5B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000042AFFF7E300061A5B /* AppDelegate.swift */; };
+		B10000052AFFF7E300061A5B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000062AFFF7E300061A5B /* SceneDelegate.swift */; };
+		B10000072AFFF7E300061A5B /* SampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000082AFFF7E300061A5B /* SampleViewController.swift */; };
+		B10000092AFFF7E300061A5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000A2AFFF7E300061A5B /* Assets.xcassets */; };
+		CCBDE8CAEF91EAD4FE247CDA /* Pods_LookinMCPSample.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 458093CAE05955C0B0828D6C /* Pods_LookinMCPSample.framework */; };
+		756745F4DD554BA2A340B4E0 /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2CE43EE4EA51A2BB1563F725 /* Pods-LookinMCPSample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinMCPSample.release.xcconfig"; path = "Target Support Files/Pods-LookinMCPSample/Pods-LookinMCPSample.release.xcconfig"; sourceTree = "<group>"; };
+		458093CAE05955C0B0828D6C /* Pods_LookinMCPSample.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LookinMCPSample.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000042AFFF7E300061A5B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B10000062AFFF7E300061A5B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		B10000082AFFF7E300061A5B /* SampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleViewController.swift; sourceTree = "<group>"; };
+		B100000A2AFFF7E300061A5B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B100000B2AFFF7E300061A5B /* LookinMCPSample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LookinMCPSample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B100000C2AFFF7E300061A5B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DF39AB5AEA7EE8302EAD6279 /* Pods-LookinMCPSample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinMCPSample.debug.xcconfig"; path = "Target Support Files/Pods-LookinMCPSample/Pods-LookinMCPSample.debug.xcconfig"; sourceTree = "<group>"; };
+		8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B100000D2AFFF7E300061A5B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CCBDE8CAEF91EAD4FE247CDA /* Pods_LookinMCPSample.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0040FB60121827E3EDFBB65D /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				DF39AB5AEA7EE8302EAD6279 /* Pods-LookinMCPSample.debug.xcconfig */,
+				2CE43EE4EA51A2BB1563F725 /* Pods-LookinMCPSample.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		B100000E2AFFF7E300061A5B = {
+			isa = PBXGroup;
+			children = (
+				B100000F2AFFF7E300061A5B /* LookinMCPSample */,
+				2876C418FC1E4BD896D6C24B /* LookinDemoSharedObjC */,
+				B10000102AFFF7E300061A5B /* Products */,
+				0040FB60121827E3EDFBB65D /* Pods */,
+				F2A247E5C67F4991F8C186FB /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		B100000F2AFFF7E300061A5B /* LookinMCPSample */ = {
+			isa = PBXGroup;
+			children = (
+				B10000042AFFF7E300061A5B /* AppDelegate.swift */,
+				B10000062AFFF7E300061A5B /* SceneDelegate.swift */,
+				B10000082AFFF7E300061A5B /* SampleViewController.swift */,
+				B100000A2AFFF7E300061A5B /* Assets.xcassets */,
+				B100000C2AFFF7E300061A5B /* Info.plist */,
+			);
+			path = LookinMCPSample;
+			sourceTree = "<group>";
+		};
+		B10000102AFFF7E300061A5B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B100000B2AFFF7E300061A5B /* LookinMCPSample.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F2A247E5C67F4991F8C186FB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				458093CAE05955C0B0828D6C /* Pods_LookinMCPSample.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		2876C418FC1E4BD896D6C24B /* LookinDemoSharedObjC */ = {
+			isa = PBXGroup;
+			children = (
+				8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */,
+			);
+			name = LookinDemoSharedObjC;
+			path = ../Shared/ObjectiveC;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B10000112AFFF7E300061A5B /* LookinMCPSample */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B10000122AFFF7E300061A5B /* Build configuration list for PBXNativeTarget "LookinMCPSample" */;
+			buildPhases = (
+				D3C6AF24BB63F66DAAD55978 /* [CP] Check Pods Manifest.lock */,
+				B10000132AFFF7E300061A5B /* Sources */,
+				B100000D2AFFF7E300061A5B /* Frameworks */,
+				B10000142AFFF7E300061A5B /* Resources */,
+				18C38FDC8A15CB9D46E57492 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LookinMCPSample;
+			productName = LookinMCPSample;
+			productReference = B100000B2AFFF7E300061A5B /* LookinMCPSample.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B10000152AFFF7E300061A5B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1400;
+				LastUpgradeCheck = 1400;
+				TargetAttributes = {
+					B10000112AFFF7E300061A5B = {
+						CreatedOnToolsVersion = 14.0;
+					};
+				};
+			};
+			buildConfigurationList = B10000162AFFF7E300061A5B /* Build configuration list for PBXProject "LookinMCPSample" */;
+			compatibilityVersion = "Xcode 13.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B100000E2AFFF7E300061A5B;
+			productRefGroup = B10000102AFFF7E300061A5B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B10000112AFFF7E300061A5B /* LookinMCPSample */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B10000142AFFF7E300061A5B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000092AFFF7E300061A5B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		18C38FDC8A15CB9D46E57492 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LookinMCPSample/Pods-LookinMCPSample-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LookinMCPSample/Pods-LookinMCPSample-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LookinMCPSample/Pods-LookinMCPSample-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D3C6AF24BB63F66DAAD55978 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-LookinMCPSample-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B10000132AFFF7E300061A5B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				756745F4DD554BA2A340B4E0 /* LookinDemoObjCBorder.m in Sources */,
+				B10000072AFFF7E300061A5B /* SampleViewController.swift in Sources */,
+				B10000032AFFF7E300061A5B /* AppDelegate.swift in Sources */,
+				B10000052AFFF7E300061A5B /* SceneDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B10000182AFFF7E300061A5B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B10000192AFFF7E300061A5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B100001A2AFFF7E300061A5B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = DF39AB5AEA7EE8302EAD6279 /* Pods-LookinMCPSample.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LookinMCPSample/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinMCPSample;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B100001B2AFFF7E300061A5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2CE43EE4EA51A2BB1563F725 /* Pods-LookinMCPSample.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LookinMCPSample/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinMCPSample;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B10000122AFFF7E300061A5B /* Build configuration list for PBXNativeTarget "LookinMCPSample" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B100001A2AFFF7E300061A5B /* Debug */,
+				B100001B2AFFF7E300061A5B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B10000162AFFF7E300061A5B /* Build configuration list for PBXProject "LookinMCPSample" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000182AFFF7E300061A5B /* Debug */,
+				B10000192AFFF7E300061A5B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B10000152AFFF7E300061A5B /* Project object */;
+}

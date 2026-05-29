@@ -1,0 +1,8 @@
+platform :ios, '16.0'
+use_frameworks!
+
+load File.expand_path('../../cocoapods/install.rb', __dir__)
+
+target 'LookinMCPSample' do
+  install_lookin_server_pods!(path: '../../', subspecs: ['Swift', 'MCP'])
+end

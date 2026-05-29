@@ -2,7 +2,7 @@
 //  ViewController.swift
 //  LookinDemoSwift
 //
-//  Created by likai.123 on 2022/10/10.
+//  Maintained by Cursor Agent.
 //
 
 import UIKit
@@ -48,7 +48,6 @@ class ViewController: UIViewController {
         myButton.frame = CGRect(x: 20, y: 20, width: 50, height: 50)
         view.addSubview(myButton)
     }
-
 
 }
 
