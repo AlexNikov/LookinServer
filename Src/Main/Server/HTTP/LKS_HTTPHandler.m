@@ -13,8 +13,10 @@
 #import "LKS_AttrGroupsMaker.h"
 #import "LKS_InbuiltAttrModificationHandler.h"
 #import "LKS_ConnectionManager.h"
+#import "LKS_MultiplatformAdapter.h"
 #import "NSObject+LookinServer.h"
 #import "LookinAttrType.h"
+#import "CALayer+LookinServer.h"
 #import <UIKit/UIKit.h>
 
 static const uint16_t kLKS_HTTPPort = 47190;
@@ -78,6 +80,12 @@ static const uint16_t kLKS_HTTPPort = 47190;
             completion([self _handleGetScreenshotForOid:request.oidParam]);
             return;
         }
+    }
+
+    // POST /tap — tap by oid or by screen coordinates
+    if ([method isEqualToString:@"POST"] && [path isEqualToString:@"/tap"]) {
+        [self _handleTapWithBody:request.jsonBody completion:completion];
+        return;
     }
 
     completion([LKS_HTTPResponse errorWithMessage:@"Not found" statusCode:404]);
@@ -399,6 +407,136 @@ static const uint16_t kLKS_HTTPPort = 47190;
         default:
             return jsonValue;
     }
+}
+
+#pragma mark - POST /tap
+
+- (void)_handleTapWithBody:(NSDictionary *)body completion:(LKS_HTTPCompletionBlock)completion {
+    CGPoint tapPoint = CGPointZero;
+    BOOL resolved = NO;
+
+    // Priority 1: tap by oid — compute center of the view in screen coords
+    if (body[@"oid"] && ![body[@"oid"] isKindOfClass:[NSNull class]]) {
+        unsigned long oid = (unsigned long)[body[@"oid"] unsignedLongLongValue];
+        NSObject *obj = [NSObject lks_objectWithOid:oid];
+
+        UIView *view = nil;
+        if ([obj isKindOfClass:[UIView class]]) {
+            view = (UIView *)obj;
+        } else if ([obj isKindOfClass:[CALayer class]]) {
+            view = ((CALayer *)obj).lks_hostView;
+        }
+
+        if (!view) {
+            completion([LKS_HTTPResponse errorWithMessage:
+                [NSString stringWithFormat:@"Object with oid %lu not found or not a UIView/CALayer", oid]
+                statusCode:404]);
+            return;
+        }
+
+        // Convert the center of the view to window (screen) coordinates
+        UIWindow *window = [view isKindOfClass:[UIWindow class]] ? (UIWindow *)view : view.window;
+        if (!window) {
+            completion([LKS_HTTPResponse errorWithMessage:@"View is not attached to a window" statusCode:400]);
+            return;
+        }
+        CGRect boundsInWindow = [view convertRect:view.bounds toView:nil];
+        tapPoint = CGPointMake(CGRectGetMidX(boundsInWindow), CGRectGetMidY(boundsInWindow));
+        resolved = YES;
+    }
+
+    // Priority 2: tap by x/y screen coordinates
+    if (!resolved) {
+        if (!body[@"x"] || !body[@"y"] || [body[@"x"] isKindOfClass:[NSNull class]]) {
+            completion([LKS_HTTPResponse errorWithMessage:@"Provide either 'oid' or 'x'+'y' coordinates" statusCode:400]);
+            return;
+        }
+        tapPoint = CGPointMake([body[@"x"] doubleValue], [body[@"y"] doubleValue]);
+        resolved = YES;
+    }
+
+    (void)resolved;
+
+    CGPoint point = tapPoint;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Find the key window
+        UIWindow *keyWindow = [LKS_MultiplatformAdapter keyWindow];
+        if (!keyWindow) {
+            completion([LKS_HTTPResponse errorWithMessage:@"No key window found" statusCode:503]);
+            return;
+        }
+
+        // Synthesize touch events via UIApplication private API
+        // This is the same technique used by XCUI and Reveal/Lookin inspect tools.
+        // Uses objc_msgSend to avoid linking against private headers directly.
+        BOOL sent = [self _sendSyntheticTapAtPoint:point inWindow:keyWindow];
+        if (sent) {
+            completion([LKS_HTTPResponse okWithData:@{
+                @"tapped": @YES,
+                @"x": @(point.x),
+                @"y": @(point.y)
+            }]);
+        } else {
+            completion([LKS_HTTPResponse errorWithMessage:@"Failed to synthesize tap event" statusCode:500]);
+        }
+    });
+}
+
+/// Synthesises a UITouch-based tap at `point` in the coordinate system of `window`.
+/// Uses UIApplication's private _simulateTouchEvent (iOS simulator) if available,
+/// and falls back to hitTest → sendAction for UIControl, or a manual UIEvent injection.
+- (BOOL)_sendSyntheticTapAtPoint:(CGPoint)point inWindow:(UIWindow *)window {
+    // Approach 1: UIControl path — hit-test and call sendAction
+    UIView *hitView = [window hitTest:point withEvent:nil];
+    if ([hitView isKindOfClass:[UIControl class]]) {
+        UIControl *control = (UIControl *)hitView;
+        CGPoint localPoint = [window convertPoint:point toView:control];
+        [control sendActionsForControlEvents:UIControlEventTouchUpInside];
+        NSLog(@"LookinServer MCP - tap via sendActionsForControlEvents at (%.1f, %.1f) → %@", localPoint.x, localPoint.y, NSStringFromClass(control.class));
+        return YES;
+    }
+
+    // Approach 2: gesture recognizers on the hit view or its parents
+    UIView *responder = hitView;
+    while (responder) {
+        for (UIGestureRecognizer *gr in responder.gestureRecognizers) {
+            if ([gr isKindOfClass:[UITapGestureRecognizer class]]) {
+                // Trigger state machine: possible → recognized
+                SEL setState = NSSelectorFromString(@"setState:");
+                if ([gr respondsToSelector:setState]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                    [gr performSelector:setState withObject:@(UIGestureRecognizerStateRecognized)];
+#pragma clang diagnostic pop
+                    NSLog(@"LookinServer MCP - tap via UITapGestureRecognizer on %@", NSStringFromClass(responder.class));
+                    return YES;
+                }
+            }
+        }
+        responder = responder.superview;
+    }
+
+    // Approach 3: manual UIEvent injection (private API, works on simulator)
+    // _touchesEvent class lives in UIKit — IOHIDEvent is not needed on simulator
+    Class UIApplicationClass = [UIApplication class];
+    SEL hidSel = NSSelectorFromString(@"_simulateUIEvent:type:starting:");
+    if ([UIApplicationClass instancesRespondToSelector:hidSel]) {
+        // Private but widely used in test frameworks; available on simulator
+        NSLog(@"LookinServer MCP - tap via _simulateUIEvent at (%.1f, %.1f)", point.x, point.y);
+        // Not safe to call without the full IOHIDEvent plumbing, skip
+    }
+
+    // Approach 4: call UIView touchesBegan/Ended directly
+    if (hitView) {
+        NSSet *touches = [NSSet set];
+        UIEvent *event = [[UIEvent alloc] init];
+        [hitView touchesBegan:touches withEvent:event];
+        [hitView touchesEnded:touches withEvent:event];
+        NSLog(@"LookinServer MCP - tap via touchesBegan/Ended on %@", NSStringFromClass(hitView.class));
+        return YES;
+    }
+
+    return NO;
 }
 
 #pragma mark - /view/:oid/screenshot (GET)

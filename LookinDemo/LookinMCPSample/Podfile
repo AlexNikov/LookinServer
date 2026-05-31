@@ -1,0 +1,5 @@
+use_frameworks!
+
+target 'LookinMCPSample' do
+    pod 'LookinServer', :path=>'../../', :subspecs => ['Swift'], :configurations => ['Debug']
+end
