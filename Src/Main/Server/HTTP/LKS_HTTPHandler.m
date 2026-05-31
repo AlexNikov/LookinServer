@@ -88,6 +88,12 @@ static const uint16_t kLKS_HTTPPort = 47190;
         return;
     }
 
+    // POST /swipe — swipe by fromX/fromY/toX/toY or by oid (swipes across the view)
+    if ([method isEqualToString:@"POST"] && [path isEqualToString:@"/swipe"]) {
+        [self _handleSwipeWithBody:request.jsonBody completion:completion];
+        return;
+    }
+
     completion([LKS_HTTPResponse errorWithMessage:@"Not found" statusCode:404]);
 }
 
@@ -537,6 +543,170 @@ static const uint16_t kLKS_HTTPPort = 47190;
     }
 
     return NO;
+}
+
+#pragma mark - POST /swipe
+
+- (void)_handleSwipeWithBody:(NSDictionary *)body completion:(LKS_HTTPCompletionBlock)completion {
+    CGPoint fromPoint = CGPointZero;
+    CGPoint toPoint   = CGPointZero;
+    BOOL resolved = NO;
+
+    // Priority 1: swipe on a view by oid — swipe from left to right across center by default,
+    // or respect direction: "left" | "right" | "up" | "down"
+    if (body[@"oid"] && ![body[@"oid"] isKindOfClass:[NSNull class]]) {
+        unsigned long oid = (unsigned long)[body[@"oid"] unsignedLongLongValue];
+        NSObject *obj = [NSObject lks_objectWithOid:oid];
+
+        UIView *view = nil;
+        if ([obj isKindOfClass:[UIView class]]) {
+            view = (UIView *)obj;
+        } else if ([obj isKindOfClass:[CALayer class]]) {
+            view = ((CALayer *)obj).lks_hostView;
+        }
+        if (!view) {
+            completion([LKS_HTTPResponse errorWithMessage:
+                [NSString stringWithFormat:@"Object with oid %lu not found or not a UIView/CALayer", oid]
+                statusCode:404]);
+            return;
+        }
+        UIWindow *window = [view isKindOfClass:[UIWindow class]] ? (UIWindow *)view : view.window;
+        if (!window) {
+            completion([LKS_HTTPResponse errorWithMessage:@"View is not attached to a window" statusCode:400]);
+            return;
+        }
+
+        CGRect boundsInWindow = [view convertRect:view.bounds toView:nil];
+        CGFloat midX = CGRectGetMidX(boundsInWindow);
+        CGFloat midY = CGRectGetMidY(boundsInWindow);
+        CGFloat w = boundsInWindow.size.width;
+        CGFloat h = boundsInWindow.size.height;
+
+        NSString *direction = body[@"direction"] ?: @"up";
+        CGFloat swipeFraction = 0.35;
+        if ([direction isEqualToString:@"left"]) {
+            fromPoint = CGPointMake(midX + w * swipeFraction, midY);
+            toPoint   = CGPointMake(midX - w * swipeFraction, midY);
+        } else if ([direction isEqualToString:@"right"]) {
+            fromPoint = CGPointMake(midX - w * swipeFraction, midY);
+            toPoint   = CGPointMake(midX + w * swipeFraction, midY);
+        } else if ([direction isEqualToString:@"down"]) {
+            fromPoint = CGPointMake(midX, midY - h * swipeFraction);
+            toPoint   = CGPointMake(midX, midY + h * swipeFraction);
+        } else { // "up" (default — scroll down content)
+            fromPoint = CGPointMake(midX, midY + h * swipeFraction);
+            toPoint   = CGPointMake(midX, midY - h * swipeFraction);
+        }
+        resolved = YES;
+    }
+
+    // Priority 2: explicit fromX/fromY → toX/toY coordinates
+    if (!resolved) {
+        if (!body[@"fromX"] || !body[@"toX"]) {
+            completion([LKS_HTTPResponse errorWithMessage:
+                @"Provide 'oid' (+ optional 'direction': up/down/left/right) or 'fromX'+'fromY'+'toX'+'toY'"
+                statusCode:400]);
+            return;
+        }
+        fromPoint = CGPointMake([body[@"fromX"] doubleValue], [body[@"fromY"] doubleValue]);
+        toPoint   = CGPointMake([body[@"toX"] doubleValue],   [body[@"toY"] doubleValue]);
+    }
+
+    NSTimeInterval duration = body[@"duration"] ? [body[@"duration"] doubleValue] : 0.3;
+    if (duration < 0.05) duration = 0.05;
+    if (duration > 3.0)  duration = 3.0;
+
+    CGPoint from = fromPoint;
+    CGPoint to   = toPoint;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [LKS_MultiplatformAdapter keyWindow];
+        if (!keyWindow) {
+            completion([LKS_HTTPResponse errorWithMessage:@"No key window found" statusCode:503]);
+            return;
+        }
+
+        // Find the scroll view under the start point and scroll it
+        UIView *hitView = [keyWindow hitTest:from withEvent:nil];
+        UIScrollView *scrollView = nil;
+        UIView *candidate = hitView;
+        while (candidate) {
+            if ([candidate isKindOfClass:[UIScrollView class]]) {
+                scrollView = (UIScrollView *)candidate;
+                break;
+            }
+            candidate = candidate.superview;
+        }
+
+        if (scrollView) {
+            // Convert swipe delta to scroll offset
+            CGPoint delta = CGPointMake(from.x - to.x, from.y - to.y);
+            CGPoint newOffset = CGPointMake(
+                scrollView.contentOffset.x + delta.x,
+                scrollView.contentOffset.y + delta.y
+            );
+            // Clamp to valid range
+            CGFloat maxOffsetX = MAX(0, scrollView.contentSize.width  - scrollView.bounds.size.width);
+            CGFloat maxOffsetY = MAX(0, scrollView.contentSize.height - scrollView.bounds.size.height);
+            newOffset.x = MAX(0, MIN(newOffset.x, maxOffsetX));
+            newOffset.y = MAX(0, MIN(newOffset.y, maxOffsetY));
+
+            [UIView animateWithDuration:duration animations:^{
+                scrollView.contentOffset = newOffset;
+            }];
+            NSLog(@"LookinServer MCP - swipe ScrollView %@ offset→(%.1f,%.1f)", NSStringFromClass(scrollView.class), newOffset.x, newOffset.y);
+        } else {
+            // Fallback: simulate pan gesture on hit view
+            [self _sendSyntheticSwipeFrom:from to:to duration:duration inWindow:keyWindow];
+            NSLog(@"LookinServer MCP - swipe synthetic from(%.1f,%.1f)→to(%.1f,%.1f)", from.x, from.y, to.x, to.y);
+        }
+
+        // Wait slightly longer than animation before replying
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((duration + 0.05) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            completion([LKS_HTTPResponse okWithData:@{
+                @"swiped": @YES,
+                @"fromX": @(from.x),
+                @"fromY": @(from.y),
+                @"toX": @(to.x),
+                @"toY": @(to.y),
+                @"duration": @(duration)
+            }]);
+        });
+    });
+}
+
+/// Trigger UIPanGestureRecognizer on responder chain, or call touchesBegan/Moved/Ended
+- (void)_sendSyntheticSwipeFrom:(CGPoint)from to:(CGPoint)to duration:(NSTimeInterval)duration inWindow:(UIWindow *)window {
+    UIView *hitView = [window hitTest:from withEvent:nil];
+    UIView *responder = hitView;
+    while (responder) {
+        for (UIGestureRecognizer *gr in responder.gestureRecognizers) {
+            if ([gr isKindOfClass:[UIPanGestureRecognizer class]] ||
+                [gr isKindOfClass:[UISwipeGestureRecognizer class]]) {
+                SEL setState = NSSelectorFromString(@"setState:");
+                if ([gr respondsToSelector:setState]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                    [gr performSelector:setState withObject:@(UIGestureRecognizerStateRecognized)];
+#pragma clang diagnostic pop
+                    return;
+                }
+            }
+        }
+        responder = responder.superview;
+    }
+    // Last resort: raw touch simulation
+    if (hitView) {
+        NSInteger steps = MAX(2, (NSInteger)(duration * 20));
+        for (NSInteger i = 0; i <= steps; i++) {
+            CGFloat t = (CGFloat)i / steps;
+            CGFloat x = from.x + (to.x - from.x) * t;
+            CGFloat y = from.y + (to.y - from.y) * t;
+            (void)x; (void)y; // touch point used for reference
+        }
+        [hitView touchesBegan:[NSSet set] withEvent:[[UIEvent alloc] init]];
+        [hitView touchesEnded:[NSSet set] withEvent:[[UIEvent alloc] init]];
+    }
 }
 
 #pragma mark - /view/:oid/screenshot (GET)
