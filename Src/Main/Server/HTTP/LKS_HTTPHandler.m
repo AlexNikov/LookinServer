@@ -123,11 +123,14 @@ static const uint16_t kLKS_HTTPPort = 47190;
 - (NSDictionary *)_serializeItem:(LookinDisplayItem *)item {
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
 
-    unsigned long oid = item.layerObject ? item.layerObject.oid : (item.viewObject ? item.viewObject.oid : 0);
+    LookinObject *displayObject = [item displayingObject];
+    unsigned long oid = displayObject ? displayObject.oid : 0;
     dict[@"oid"] = @(oid);
 
-    NSString *className = item.layerObject ? [item.layerObject rawClassName] : (item.viewObject ? [item.viewObject rawClassName] : @"");
-    dict[@"className"] = className ?: @"";
+    dict[@"className"] = displayObject.rawClassName ?: @"";
+    if (displayObject.memoryAddress.length > 0) {
+        dict[@"memoryAddress"] = displayObject.memoryAddress;
+    }
 
     if (item.isHidden) dict[@"hidden"] = @YES;
     if (item.alpha < 0.999f) dict[@"alpha"] = @(item.alpha);
