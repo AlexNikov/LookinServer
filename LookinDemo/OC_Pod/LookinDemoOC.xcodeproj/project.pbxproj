@@ -16,6 +16,7 @@
 		A76A159E28F43C5B00086B38 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A76A159D28F43C5B00086B38 /* Assets.xcassets */; };
 		A76A15A128F43C5B00086B38 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A76A159F28F43C5B00086B38 /* LaunchScreen.storyboard */; };
 		A76A15A428F43C5B00086B38 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A76A15A328F43C5B00086B38 /* main.m */; };
+		201D37086B734CD39B95DFAD /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4837B4C0C55549E5B2F71D51 /* LookinDemoObjCBorder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		A76A15A228F43C5B00086B38 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A76A15A328F43C5B00086B38 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		FD8E7F541A46626F2CA92333 /* Pods-LookinDemoOC.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinDemoOC.release.xcconfig"; path = "Target Support Files/Pods-LookinDemoOC/Pods-LookinDemoOC.release.xcconfig"; sourceTree = "<group>"; };
+		4837B4C0C55549E5B2F71D51 /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				A76A159028F43C5A00086B38 /* LookinDemoOC */,
+				D297F003A94848D399E6D3B2 /* LookinDemoSharedObjC */,
 				A76A158F28F43C5A00086B38 /* Products */,
 				BF1594B12E23CAEE12826591 /* Pods */,
 				14A94AA4ECD1528B5030D487 /* Frameworks */,
@@ -103,6 +106,15 @@
 				FD8E7F541A46626F2CA92333 /* Pods-LookinDemoOC.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		D297F003A94848D399E6D3B2 /* LookinDemoSharedObjC */ = {
+			isa = PBXGroup;
+			children = (
+				4837B4C0C55549E5B2F71D51 /* LookinDemoObjCBorder.m */,
+			);
+			name = LookinDemoSharedObjC;
+			path = ../Shared/ObjectiveC;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -219,6 +231,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				201D37086B734CD39B95DFAD /* LookinDemoObjCBorder.m in Sources */,
 				A76A159928F43C5A00086B38 /* ViewController.m in Sources */,
 				A76A159328F43C5A00086B38 /* AppDelegate.m in Sources */,
 				A76A15A428F43C5B00086B38 /* main.m in Sources */,

@@ -13,6 +13,7 @@
 		A7BEF8132BC1689A00DCE575 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7BEF8122BC1689A00DCE575 /* ContentView.swift */; };
 		A7BEF8152BC1689B00DCE575 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A7BEF8142BC1689B00DCE575 /* Assets.xcassets */; };
 		A7BEF8182BC1689B00DCE575 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A7BEF8172BC1689B00DCE575 /* Preview Assets.xcassets */; };
+		3930712E74BA45559C1C1F53 /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 417C379E04A94DEF8FE0BBAA /* LookinDemoObjCBorder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		A7BEF8172BC1689B00DCE575 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		A7BEF8192BC1689B00DCE575 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CAB93207B81F0B3A5BA65D3C /* Pods-TestVisionOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TestVisionOS.debug.xcconfig"; path = "Target Support Files/Pods-TestVisionOS/Pods-TestVisionOS.debug.xcconfig"; sourceTree = "<group>"; };
+		417C379E04A94DEF8FE0BBAA /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				A7BEF80B2BC1689A00DCE575 /* TestVisionOS */,
+				C648D5094740495EB66E9C72 /* LookinDemoSharedObjC */,
 				A7BEF80C2BC1689A00DCE575 /* Packages */,
 				A7BEF80A2BC1689A00DCE575 /* Products */,
 				947BF4F74A3874B564D1F7D6 /* Pods */,
@@ -103,6 +106,15 @@
 				A7BEF8172BC1689B00DCE575 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		C648D5094740495EB66E9C72 /* LookinDemoSharedObjC */ = {
+			isa = PBXGroup;
+			children = (
+				417C379E04A94DEF8FE0BBAA /* LookinDemoObjCBorder.m */,
+			);
+			name = LookinDemoSharedObjC;
+			path = ../Shared/ObjectiveC;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -222,6 +234,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3930712E74BA45559C1C1F53 /* LookinDemoObjCBorder.m in Sources */,
 				A7BEF8132BC1689A00DCE575 /* ContentView.swift in Sources */,
 				A7BEF8112BC1689A00DCE575 /* TestVisionOSApp.swift in Sources */,
 			);
