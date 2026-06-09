@@ -4,9 +4,8 @@ import Darwin
 import Foundation
 import UIKit
 
-private typealias LookinPTChannelDelegateProtocol = Lookin_PTChannelDelegate
-
-public final class LKS_ConnectionManager: NSObject, LookinPTChannelDelegateProtocol {
+@MainActor
+public final class LKS_ConnectionManager: NSObject {
 
     @objc public static let sharedInstance = LKS_ConnectionManager()
 
@@ -18,43 +17,92 @@ public final class LKS_ConnectionManager: NSObject, LookinPTChannelDelegateProto
 
     @objc public var applicationIsActive = false
 
-    /// Strong ref keeps listen/connected Peertalk channels alive (delegate is weak on the channel side).
-    var peerChannel_: LookinPTChannel?
+    private var peerChannel: PTChannel?
+    private var peerChannelUniqueID: Int32?
+    private var listenChannel: PTChannel?
+    private var peertalkListenPortCache = 0
+    private var peertalkIsConnectedCache = false
+    private var listeningTask: Task<Void, Never>?
+    private var frameLoopTask: Task<Void, Never>?
+    private var watchdogTask: Task<Void, Never>?
     let requestHandler = LKS_RequestHandler()
-    /// Last inbound Peertalk activity on the connected peer (Mac client quit detection).
     private var lastPeerFrameAt: TimeInterval = 0
-    private var peertalkWatchdogTimer: DispatchSourceTimer?
 
     private override init() {
         super.init()
         NSLog("LookinServer - Will launch. Framework version: %@", lookinServerReadableVersion)
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(_handleApplicationDidBecomeActive),
-            name: UIApplication.didBecomeActiveNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(_handleApplicationDidFinishLaunching),
-            name: UIApplication.didFinishLaunchingNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(_handleWillResignActiveNotification),
-            name: UIApplication.willResignActiveNotification,
-            object: nil
-        )
-        if #available(iOS 13.0, *) {
+        startLifecycleObservers()
+        startMCPHTTPServerIfAvailable(port: 47190)
+        startWatchdog()
+    }
+
+    deinit {
+        listeningTask?.cancel()
+        frameLoopTask?.cancel()
+        watchdogTask?.cancel()
+    }
+
+    // MARK: - Lifecycle
+
+    private func startLifecycleObservers() {
+        if #available(iOS 15.0, *) {
+            Task { @MainActor [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: UIApplication.didBecomeActiveNotification) {
+                    self?.applicationIsActive = true
+                    self?.recycleStaleConnectedPeerIfNeeded(minIdle: 0.25)
+                    await self?.searchPortToListenIfNoConnection()
+                }
+            }
+            Task { @MainActor [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: UIApplication.didFinishLaunchingNotification) {
+                    await self?.searchPortToListenIfNoConnection()
+                }
+            }
+            Task { @MainActor [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: UIApplication.willResignActiveNotification) {
+                    self?.applicationIsActive = false
+                    self?.handleWillResignActive()
+                }
+            }
+            if #available(iOS 13.0, *) {
+                Task { @MainActor [weak self] in
+                    for await _ in NotificationCenter.default.notifications(named: UIScene.didActivateNotification) {
+                        self?.applicationIsActive = true
+                        self?.recycleStaleConnectedPeerIfNeeded(minIdle: 0.25)
+                        await self?.searchPortToListenIfNoConnection()
+                    }
+                }
+            }
+        } else {
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(_handleSceneDidActivate),
-                name: UIScene.didActivateNotification,
+                selector: #selector(_handleApplicationDidBecomeActive),
+                name: UIApplication.didBecomeActiveNotification,
                 object: nil
             )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(_handleApplicationDidFinishLaunching),
+                name: UIApplication.didFinishLaunchingNotification,
+                object: nil
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(_handleWillResignActiveNotification),
+                name: UIApplication.willResignActiveNotification,
+                object: nil
+            )
+            if #available(iOS 13.0, *) {
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(_handleSceneDidActivate),
+                    name: UIScene.didActivateNotification,
+                    object: nil
+                )
+            }
         }
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(_handleLocalInspect(_:)),
@@ -87,15 +135,415 @@ public final class LKS_ConnectionManager: NSObject, LookinPTChannelDelegateProto
             name: .getLookinInfo,
             object: nil
         )
-
-        startMCPHTTPServerIfAvailable(port: 47190)
-        startPeertalkWatchdog()
     }
 
-    deinit {
-        peertalkWatchdogTimer?.cancel()
-        peerChannel_?.close()
-        NotificationCenter.default.removeObserver(self)
+    private func startWatchdog() {
+        watchdogTask?.cancel()
+        watchdogTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { return }
+                self?.checkPeertalkZombiePeer()
+            }
+        }
+    }
+
+    // MARK: - Public API
+
+    @objc(respond:requestType:tag:)
+    public func respond(_ data: LKConnectionResponseAttachment, requestType: UInt32, tag: UInt32) {
+        respondWireV2(data, requestType: requestType, tag: tag)
+    }
+
+    @objc(pushData:type:)
+    public func pushData(_ data: NSObject, type: UInt32) {
+        guard LookinWirePushTypes.all.contains(type) else {
+            NSLog("LookinServer - unsupported push type:%u", type)
+            return
+        }
+        do {
+            let jsonData = try LKWireCodecV2.encodeJSON(WirePushEnvelope(pushType: type))
+            sendRawPayload(jsonData, frameOfType: type, tag: 0)
+        } catch {
+            NSLog("LookinServer - wire v2 push JSON encode failed type:%u: %@", type, error as NSError)
+        }
+    }
+
+    @objc public func mcpPeertalkListenPort() -> Int {
+        peertalkListenPortCache
+    }
+
+    @objc public func mcpPeertalkIsConnected() -> Bool {
+        peertalkIsConnectedCache
+    }
+
+    private func updatePeertalkCache(using channel: PTChannel?) async {
+        guard let channel else {
+            peertalkListenPortCache = 0
+            peertalkIsConnectedCache = false
+            return
+        }
+        let listening = await channel.isListening
+        peertalkListenPortCache = listening ? await channel.targetPort : 0
+        peertalkIsConnectedCache = await channel.isConnected
+    }
+
+    @objc public func nudgePeertalkListenForLaunchScreenDiscoveryIfNeeded() {
+        Task { await searchPortToListenIfNoConnection() }
+    }
+
+    @objc public func searchPortToListenIfNoConnection() {
+        Task { await searchPortToListenIfNoConnection() }
+    }
+
+    @objc public func prepareForNewMacClientConnection() {
+        recycleStaleConnectedPeerIfNeeded(minIdle: 0)
+        Task { await searchPortToListenIfNoConnection() }
+    }
+
+    // MARK: - Peertalk orchestration
+
+    private func searchPortToListenIfNoConnection() async {
+        await clearDeadPeersIfNeeded()
+        await recycleStaleListenPeerIfNeeded()
+        await recycleStaleConnectedPeerIfNeededAsync(minIdle: 0.25)
+
+        if let peer = peerChannel, await peer.isConnected, await peer.hasActiveTransport {
+            let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
+            if lastPeerFrameAt > 0, idle < 0.25 {
+                NSLog("LookinServer - Abort to search ports. Already has connected channel.")
+                return
+            }
+        }
+
+        NSLog("LookinServer - Searching port to listen...")
+        frameLoopTask?.cancel()
+        frameLoopTask = nil
+        listeningTask?.cancel()
+        listeningTask = nil
+        if let listen = listenChannel {
+            await listen.close()
+            listenChannel = nil
+        }
+        if let peer = peerChannel {
+            await peer.close()
+            peerChannel = nil
+            peerChannelUniqueID = nil
+        }
+        lastPeerFrameAt = 0
+
+        if isiOSAppOnMac() {
+            await searchPortToListen(from: Int32(LookinSimulatorIPv4PortNumberStart), to: Int32(LookinSimulatorIPv4PortNumberEnd))
+        } else {
+            await searchPortToListen(from: Int32(LookinUSBDeviceIPv4PortNumberStart), to: Int32(LookinUSBDeviceIPv4PortNumberEnd))
+        }
+    }
+
+    private func searchPortToListen(from: Int32, to: Int32) async {
+        var current = from
+        while current <= to {
+            let channel = PTChannel()
+            do {
+                try await channel.listen(onPort: UInt16(current))
+                NSLog("LookinServer - Connected successfully on 127.0.0.1:%d", current)
+                LookinDiagLog.log("Peertalk listen OK port=\(current)")
+                listenChannel = channel
+                peerChannel = channel
+                peerChannelUniqueID = await channel.uniqueID
+                await updatePeertalkCache(using: channel)
+                listeningTask = Task { @MainActor [weak self] in
+                    await self?.runAcceptLoop(on: channel)
+                }
+                return
+            } catch {
+                if current < to {
+                    NSLog("LookinServer - 127.0.0.1:%d is unavailable(%@). Will try anothor address ...", current, error as NSError)
+                    LookinDiagLog.log("Peertalk listen skip port=\(current) errno=\((error as NSError).code)")
+                    current += 1
+                } else {
+                    NSLog("LookinServer - 127.0.0.1:%d is unavailable(%@).", current, error as NSError)
+                    NSLog(
+                        "LookinServer - Peertalk listen FAILED on all ports %d-%d (errno in log above). Rebuild iOS app after pod install.",
+                        from,
+                        to
+                    )
+                    return
+                }
+            }
+        }
+    }
+
+    private func runAcceptLoop(on listenChannel: PTChannel) async {
+        for await peer in listenChannel.acceptedChannels() {
+            let previous = peerChannel
+            peerChannel = peer
+            peerChannelUniqueID = await peer.uniqueID
+            await updatePeertalkCache(using: peer)
+            lastPeerFrameAt = Date().timeIntervalSince1970
+            if let previous, await previous.uniqueID != await listenChannel.uniqueID {
+                await previous.cancel()
+            }
+            frameLoopTask?.cancel()
+            frameLoopTask = Task { @MainActor [weak self] in
+                await self?.runFrameLoop(on: peer)
+            }
+        }
+        await searchPortToListenIfNoConnection()
+    }
+
+    private func runFrameLoop(on channel: PTChannel) async {
+        let channelID = await channel.uniqueID
+        do {
+            for try await frame in channel.frames() {
+                guard peerChannelUniqueID == channelID else { break }
+                lastPeerFrameAt = Date().timeIntervalSince1970
+                await handleFrame(frame)
+            }
+        } catch {
+            await handleChannelEnd(channelID: channelID, error: error as NSError)
+        }
+    }
+
+    private func handleFrame(_ frame: PTFrame) async {
+        guard !frame.payload.isEmpty else {
+            NSLog("LookinServer - didReceive frame type:%u tag:%u empty payload", frame.type, frame.tag)
+            return
+        }
+        let data = frame.payload
+        if frame.type == LookinWireFormat.frameTypeJSON {
+            handleWireJSONCommand(data, tag: frame.tag)
+            return
+        }
+        do {
+            let envelope = try LKWireCodecV2.decodeJSON(WireRequestEnvelope.self, from: data)
+            handleWireJSONRequest(envelope, tag: frame.tag)
+            return
+        } catch {
+            if data.first == UInt8(ascii: "{") {
+                NSLog(
+                    "LookinServer - wire request JSON decode failed type:%u tag:%u bytes:%zu error:%@ preview:%@",
+                    frame.type,
+                    frame.tag,
+                    data.count,
+                    error as NSError,
+                    String(data: data.prefix(120), encoding: .utf8) ?? ""
+                )
+            }
+        }
+        if LookinWirePushTypes.all.contains(frame.type),
+           let push = try? LKWireCodecV2.decodeJSON(WirePushEnvelope.self, from: data) {
+            guard LookinWireFormat.validateWireVersion(push.wireVersion, context: "push") else {
+                return
+            }
+            requestHandler.handleRequestType(push.pushType, tag: frame.tag, object: nil)
+            return
+        }
+        NSLog(
+            "LookinServer - expected JSON request/push, got type:%u tag:%u payload:%zu",
+            frame.type,
+            frame.tag,
+            data.count
+        )
+    }
+
+    private func handleChannelEnd(channelID: Int32, error: NSError?) async {
+        guard peerChannelUniqueID == channelID else {
+            if peerChannel == nil {
+                await searchPortToListenIfNoConnection()
+            }
+            return
+        }
+        NSLog("LookinServer - channel DidEndWithError:%@", String(describing: error))
+        NotificationCenter.default.post(
+            name: NSNotification.Name(rawValue: LKS_ConnectionDidEndNotificationName as String),
+            object: self
+        )
+        peerChannel = nil
+        peerChannelUniqueID = nil
+        peertalkListenPortCache = 0
+        peertalkIsConnectedCache = false
+        lastPeerFrameAt = 0
+        await searchPortToListenIfNoConnection()
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        await searchPortToListenIfNoConnection()
+    }
+
+    func sendRawPayload(_ data: Data, frameOfType: UInt32, tag: UInt32) {
+        guard let peerChannel else { return }
+        Task {
+            do {
+                try await peerChannel.send(type: frameOfType, tag: tag, payload: data)
+            } catch {
+                NSLog(
+                    "LookinServer - wire v2 sendFrame failed type:%u tag:%u error:%@",
+                    frameOfType,
+                    tag,
+                    error as NSError
+                )
+            }
+        }
+    }
+
+    // MARK: - Peer maintenance
+
+    private func clearDeadPeersIfNeeded() async {
+        if let peer = peerChannel, !(await peer.isListening), !(await peer.isConnected) {
+            LookinDiagLog.log("iOS clear dead Peertalk peer — re-listen")
+            await peer.close()
+            peerChannel = nil
+            peerChannelUniqueID = nil
+            lastPeerFrameAt = 0
+        }
+        if !isiOSAppOnMac(),
+           let peer = peerChannel,
+           await peer.isConnected,
+           !(await peer.isListening),
+           !(await peer.hasActiveTransport) {
+            await prepareForNewMacClientConnectionAsync()
+        }
+    }
+
+    private func recycleStaleListenPeerIfNeeded() async {
+        guard let peer = peerChannel, await peer.isListening else { return }
+        if await peer.hasActiveTransport { return }
+        LookinDiagLog.log("iOS stale listen peer (no transport) — recycle for re-listen")
+        await peer.close()
+        peerChannel = nil
+        peerChannelUniqueID = nil
+    }
+
+    private func recycleStaleConnectedPeerIfNeededAsync(minIdle: TimeInterval) async {
+        guard let peer = peerChannel, !(await peer.isListening), await peer.isConnected else { return }
+        if await peer.hasActiveTransport {
+            let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
+            if lastPeerFrameAt > 0, idle >= minIdle {
+                LookinDiagLog.log("iOS recycle stale peer idle=\(String(format: "%.2f", idle))s — re-listen")
+                await peer.cancel()
+                peerChannel = nil
+                peerChannelUniqueID = nil
+                lastPeerFrameAt = 0
+            }
+            return
+        }
+        LookinDiagLog.log("iOS stale peer (connected, no transport) — closing for re-listen")
+        await peer.close()
+        peerChannel = nil
+        peerChannelUniqueID = nil
+    }
+
+    private func recycleStaleConnectedPeerIfNeeded(minIdle: TimeInterval = 0.8) {
+        Task { await recycleStaleConnectedPeerIfNeededAsync(minIdle: minIdle) }
+    }
+
+    private func prepareForNewMacClientConnectionAsync() async {
+        await recycleStaleConnectedPeerIfNeededAsync(minIdle: 0)
+        await searchPortToListenIfNoConnection()
+    }
+
+    private func checkPeertalkZombiePeer() {
+        Task { await checkPeertalkZombiePeerAsync() }
+    }
+
+    private func checkPeertalkZombiePeerAsync() async {
+        if let peer = peerChannel, await peer.isListening {
+            if !(await peer.hasActiveTransport) {
+                LookinDiagLog.log("iOS watchdog stale listen (no transport) — recycle")
+                await peer.close()
+                peerChannel = nil
+                peerChannelUniqueID = nil
+                await searchPortToListenIfNoConnection()
+            }
+            return
+        }
+
+        guard let peer = peerChannel else {
+            if applicationIsActive || !isiOSAppOnMac() {
+                await searchPortToListenIfNoConnection()
+            }
+            return
+        }
+
+        if !(await peer.isListening), !(await peer.isConnected) {
+            LookinDiagLog.log("iOS watchdog dead peer — clear and re-listen")
+            await peer.close()
+            peerChannel = nil
+            peerChannelUniqueID = nil
+            lastPeerFrameAt = 0
+            await searchPortToListenIfNoConnection()
+            return
+        }
+
+        if await peer.isConnected {
+            if !(await peer.isListening), !(await peer.hasActiveTransport) {
+                LookinDiagLog.log("iOS watchdog connected zombie w/o transport — re-listen")
+                await prepareForNewMacClientConnectionAsync()
+                return
+            }
+            if !(await peer.hasActiveTransport) {
+                LookinDiagLog.log("iOS watchdog connected peer w/o transport — re-listen")
+                await prepareForNewMacClientConnectionAsync()
+                return
+            }
+            let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
+            let idleThreshold: TimeInterval = isiOSAppOnMac()
+                ? (applicationIsActive ? 5.0 : 0.8)
+                : (applicationIsActive ? 30.0 : 0.8)
+            if lastPeerFrameAt <= 0 || idle >= idleThreshold {
+                LookinDiagLog.log(
+                    "iOS watchdog stale connected idle=\(String(format: "%.1f", idle))s active=\(applicationIsActive) — re-listen"
+                )
+                await prepareForNewMacClientConnectionAsync()
+            }
+        }
+    }
+
+    private func handleWillResignActive() {
+        Task { await handleWillResignActiveAsync() }
+    }
+
+    private func handleWillResignActiveAsync() async {
+        if let channel = peerChannel {
+            if await channel.isListening { return }
+            if !(await channel.isConnected) {
+                await channel.close()
+                peerChannel = nil
+                peerChannelUniqueID = nil
+            }
+        }
+        ensurePeertalkListenAfterResigningActive()
+    }
+
+    private func ensurePeertalkListenAfterResigningActive() {
+        #if targetEnvironment(simulator)
+        return
+        #else
+        guard !isiOSAppOnMac() else { return }
+        Task { await searchPortToListenIfNoConnection() }
+        #endif
+    }
+
+    @objc private func _handleApplicationDidFinishLaunching() {
+        LookinDiagLog.log("iOS didFinishLaunching — schedule Peertalk listen")
+        Task { await searchPortToListenIfNoConnection() }
+    }
+
+    @objc private func _handleApplicationDidBecomeActive() {
+        applicationIsActive = true
+        LookinDiagLog.log("iOS didBecomeActive — ensure Peertalk listen")
+        recycleStaleConnectedPeerIfNeeded(minIdle: 0.25)
+        Task { await searchPortToListenIfNoConnection() }
+    }
+
+    @objc private func _handleWillResignActiveNotification() {
+        applicationIsActive = false
+        handleWillResignActive()
+    }
+
+    @objc private func _handleSceneDidActivate(_ note: Notification) {
+        applicationIsActive = true
+        LookinDiagLog.log("iOS scene didActivate — ensure Peertalk listen")
+        recycleStaleConnectedPeerIfNeeded(minIdle: 0.25)
+        Task { await searchPortToListenIfNoConnection() }
     }
 
     private func startMCPHTTPServerIfAvailable(port: UInt16) {
@@ -116,414 +564,6 @@ public final class LKS_ConnectionManager: NSObject, LookinPTChannelDelegateProto
             "LookinServer - Swift MCP HTTP server unavailable (add LookinServer/MCP subspec; tried %@)",
             classNames.joined(separator: ", ")
         )
-    }
-
-    @objc(respond:requestType:tag:)
-    public func respond(_ data: LKConnectionResponseAttachment, requestType: UInt32, tag: UInt32) {
-        respondWireV2(data, requestType: requestType, tag: tag)
-    }
-
-    @objc(pushData:type:)
-    public func pushData(_ data: NSObject, type: UInt32) {
-        guard LookinWirePushTypes.all.contains(type) else {
-            NSLog("LookinServer - unsupported push type:%u", type)
-            return
-        }
-        do {
-            let jsonData = try LKWireCodecV2.encodeJSON(WirePushEnvelope(pushType: type))
-            _sendRawPayload(jsonData, frameOfType: type, tag: 0)
-        } catch {
-            NSLog("LookinServer - wire v2 push JSON encode failed type:%u: %@", type, error as NSError)
-        }
-    }
-
-    /// Peertalk listen port when `peerChannel_` is listening; 0 when connected or idle.
-    @objc public func mcpPeertalkListenPort() -> Int {
-        guard let peer = peerChannel_, peer.isListening else { return 0 }
-        return peer.targetPort
-    }
-
-    @objc public func mcpPeertalkIsConnected() -> Bool {
-        peerChannel_?.isConnected == true
-    }
-
-    /// Launch-screen discovery: mac Lookin may scan while a zombie Peertalk peer still blocks re-listen.
-    @objc public func nudgePeertalkListenForLaunchScreenDiscoveryIfNeeded() {
-        guard let peer = peerChannel_ else {
-            searchPortToListenIfNoConnection()
-            return
-        }
-        if peer.isListening {
-            if peer.hasActiveTransport {
-                return
-            }
-            LookinDiagLog.log("iOS nudge stale listen peer — recycle")
-            let stale = peer
-            peerChannel_ = nil
-            stale.close()
-            searchPortToListenIfNoConnection()
-            return
-        }
-        if peer.isConnected {
-            let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
-            if lastPeerFrameAt <= 0 || idle >= 0.8 {
-                LookinDiagLog.log(
-                    "iOS nudge Peertalk re-listen (connected idle=\(String(format: "%.1f", idle))s)"
-                )
-                prepareForNewMacClientConnection()
-            }
-            return
-        }
-        searchPortToListenIfNoConnection()
-    }
-
-    @objc public func searchPortToListenIfNoConnection() {
-        // Mac quit / USB drop can leave a dead channel (not listening, not connected) that blocks re-listen.
-        if let peer = peerChannel_, !peer.isListening, !peer.isConnected {
-            LookinDiagLog.log("iOS clear dead Peertalk peer — re-listen")
-            let stale = peer
-            peerChannel_ = nil
-            lastPeerFrameAt = 0
-            stale.close()
-        }
-        // USB device: connected zombie (no live transport) after Mac client quit — not a normal connected session.
-        if !isiOSAppOnMac(),
-           let peer = peerChannel_, peer.isConnected, mcpPeertalkListenPort() == 0, !peer.hasActiveTransport {
-            prepareForNewMacClientConnection()
-        }
-        recycleStaleConnectedPeerIfNeeded()
-        if let peer = peerChannel_, peer.isListening {
-            if peer.hasActiveTransport {
-                return
-            }
-            LookinDiagLog.log("iOS stale listen peer (no transport) — recycle for re-listen")
-            let stale = peer
-            peerChannel_ = nil
-            stale.close()
-        }
-        if let peer = peerChannel_, peer.isConnected {
-            if peer.hasActiveTransport {
-                let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
-                // killall Lookin / crash often leaves a connected peer with no live Mac client.
-                if lastPeerFrameAt > 0, idle < 0.25 {
-                    NSLog("LookinServer - Abort to search ports. Already has connected channel.")
-                    return
-                }
-                LookinDiagLog.log(
-                    "iOS zombie peer (connected, idle=\(String(format: "%.1f", idle))s) — recycle for re-listen"
-                )
-                let stale = peer
-                peerChannel_ = nil
-                lastPeerFrameAt = 0
-                stale.cancel()
-            } else {
-                // Mac client died without a clean Peertalk teardown — do not block re-listen.
-                LookinDiagLog.log("iOS stale peer (connected, no transport) — closing for re-listen")
-                peer.close()
-                peerChannel_ = nil
-            }
-        }
-        NSLog("LookinServer - Searching port to listen...")
-        peerChannel_?.close()
-        peerChannel_ = nil
-
-        if isiOSAppOnMac() {
-            _tryToListenOnPort(
-                from: Int32(LookinSimulatorIPv4PortNumberStart),
-                to: Int32(LookinSimulatorIPv4PortNumberEnd),
-                current: Int32(LookinSimulatorIPv4PortNumberStart)
-            )
-        } else {
-            _tryToListenOnPort(
-                from: Int32(LookinUSBDeviceIPv4PortNumberStart),
-                to: Int32(LookinUSBDeviceIPv4PortNumberEnd),
-                current: Int32(LookinUSBDeviceIPv4PortNumberStart)
-            )
-        }
-    }
-
-    // MARK: - Lookin_PTChannelDelegate
-
-    @objc public func ioFrameChannel(
-        _ channel: LookinPTChannel,
-        didReceiveFrameOfType type: UInt32,
-        tag: UInt32,
-        payload: LookinPTData?
-    ) {
-        if channel === peerChannel_ {
-            lastPeerFrameAt = Date().timeIntervalSince1970
-        }
-        let payloadSize = payload?.length ?? 0
-        guard let payload else {
-            NSLog("LookinServer - didReceive frame type:%u tag:%u empty payload", type, tag)
-            return
-        }
-        let data = payload.lookinPayloadBytes()
-        if type == LookinWireFormat.frameTypeJSON {
-            handleWireJSONCommand(data, tag: tag)
-            return
-        }
-        do {
-            let envelope = try LKWireCodecV2.decodeJSON(WireRequestEnvelope.self, from: data)
-            handleWireJSONRequest(envelope, tag: tag)
-            return
-        } catch {
-            if data.first == UInt8(ascii: "{") {
-                NSLog(
-                    "LookinServer - wire request JSON decode failed type:%u tag:%u bytes:%zu error:%@ preview:%@",
-                    type,
-                    tag,
-                    data.count,
-                    error as NSError,
-                    String(data: data.prefix(120), encoding: .utf8) ?? ""
-                )
-            }
-        }
-        if LookinWirePushTypes.all.contains(type),
-           let push = try? LKWireCodecV2.decodeJSON(WirePushEnvelope.self, from: data) {
-            guard LookinWireFormat.validateWireVersion(push.wireVersion, context: "push") else {
-                return
-            }
-            requestHandler.handleRequestType(push.pushType, tag: tag, object: nil)
-            return
-        }
-        NSLog(
-            "LookinServer - expected JSON request/push, got type:%u tag:%u payload:%zu",
-            type,
-            tag,
-            payloadSize
-        )
-    }
-
-    @objc public func ioFrameChannel(
-        _ channel: LookinPTChannel,
-        shouldAcceptFrameOfType type: UInt32,
-        tag: UInt32,
-        payloadSize: UInt32
-    ) -> Bool {
-        if channel !== peerChannel_ {
-            return false
-        }
-        if type == LookinWireFormat.frameTypeJSON || type == LookinWireFormat.frameTypeScreenshot {
-            return true
-        }
-        if requestHandler.canHandleRequestType(type) {
-            return true
-        }
-        channel.close()
-        return false
-    }
-
-    @objc public func ioFrameChannel(_ channel: LookinPTChannel, didEndWithError error: NSError?) {
-        if peerChannel_ !== channel {
-            NSLog("LookinServer - Ignore channel%@ end.", channel.debugTag())
-            if peerChannel_ == nil {
-                searchPortToListenIfNoConnection()
-            }
-            return
-        }
-        NSLog("LookinServer - channel%@ DidEndWithError:%@", channel.debugTag(), String(describing: error))
-
-        NotificationCenter.default.post(
-            name: NSNotification.Name(rawValue: LKS_ConnectionDidEndNotificationName as String),
-            object: self
-        )
-        // Drop peer before re-listen — searchPort aborts when peerChannel_.isConnected is still true.
-        peerChannel_ = nil
-        lastPeerFrameAt = 0
-        channel.close()
-        searchPortToListenIfNoConnection()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.searchPortToListenIfNoConnection()
-        }
-    }
-
-    @objc public func ioFrameChannel(
-        _ channel: LookinPTChannel,
-        didAcceptConnection otherChannel: LookinPTChannel,
-        fromAddress address: LookinPTAddress
-    ) {
-        NSLog("LookinServer - channel:%@, acceptConnection:%@", channel.debugTag(), otherChannel.debugTag())
-
-        let previousChannel = peerChannel_
-        otherChannel.targetPort = address.port
-        peerChannel_ = otherChannel
-        lastPeerFrameAt = Date().timeIntervalSince1970
-        previousChannel?.cancel()
-    }
-
-    // MARK: - Private
-
-    /// Drop a connected-only peer so a new Mac Lookin client can attach (demo keeps running).
-    @objc public func prepareForNewMacClientConnection() {
-        recycleStaleConnectedPeerIfNeeded(minIdle: 0)
-        searchPortToListenIfNoConnection()
-    }
-
-    /// Mac Lookin quit without Peertalk teardown leaves a connected zombie — relisten for the next client.
-    private func startPeertalkWatchdog() {
-        guard peertalkWatchdogTimer == nil else { return }
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + 1, repeating: 1.0)
-        timer.setEventHandler { [weak self] in
-            self?.checkPeertalkZombiePeer()
-        }
-        timer.resume()
-        peertalkWatchdogTimer = timer
-    }
-
-    private func checkPeertalkZombiePeer() {
-        if let peer = peerChannel_, peer.isListening {
-            if !peer.hasActiveTransport {
-                LookinDiagLog.log("iOS watchdog stale listen (no transport) — recycle")
-                let stale = peer
-                peerChannel_ = nil
-                stale.close()
-                searchPortToListenIfNoConnection()
-            }
-            return
-        }
-
-        guard let peer = peerChannel_ else {
-            // Physical device must keep USB listen even when the app is backgrounded (Mac Lookin has focus).
-            if applicationIsActive || !isiOSAppOnMac() {
-                searchPortToListenIfNoConnection()
-            }
-            return
-        }
-
-        if !peer.isListening, !peer.isConnected {
-            LookinDiagLog.log("iOS watchdog dead peer — clear and re-listen")
-            let stale = peer
-            peerChannel_ = nil
-            lastPeerFrameAt = 0
-            stale.close()
-            searchPortToListenIfNoConnection()
-            return
-        }
-
-        if peer.isConnected {
-            if mcpPeertalkListenPort() == 0, !peer.hasActiveTransport {
-                LookinDiagLog.log("iOS watchdog connected zombie w/o transport — re-listen")
-                prepareForNewMacClientConnection()
-                return
-            }
-            if !peer.hasActiveTransport {
-                LookinDiagLog.log("iOS watchdog connected peer w/o transport — re-listen")
-                prepareForNewMacClientConnection()
-                return
-            }
-            let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
-            // Keep live inspector sessions during Mac UI idle after load; short idle only when
-            // the iOS app is backgrounded (Mac Lookin has focus, no wire traffic expected).
-            // USB device: Mac Lookin quit (killall) leaves a zombie peer — recycle quickly.
-            // Real device bulk HierarchyDetails can take >0.8 s with no Mac→iOS frames after
-            // the initial request; use a long threshold while the app is active so the channel
-            // is not torn down mid-inspection. The !peer.hasActiveTransport checks above handle
-            // fast Mac-quit detection independently of this idle guard.
-            let idleThreshold: TimeInterval = isiOSAppOnMac()
-                ? (applicationIsActive ? 5.0 : 0.8)
-                : (applicationIsActive ? 30.0 : 0.8)
-            if lastPeerFrameAt <= 0 || idle >= idleThreshold {
-                LookinDiagLog.log(
-                    "iOS watchdog stale connected idle=\(String(format: "%.1f", idle))s active=\(applicationIsActive) — re-listen"
-                )
-                prepareForNewMacClientConnection()
-            }
-        }
-    }
-
-    /// After the Mac client quits, the connected peer can block re-listen until iOS becomes active again.
-    private func recycleStaleConnectedPeerIfNeeded(minIdle: TimeInterval = 0.8) {
-        guard let peer = peerChannel_, peer.isListening == false, peer.isConnected else { return }
-        if minIdle > 0 {
-            let idle = Date().timeIntervalSince1970 - lastPeerFrameAt
-            guard lastPeerFrameAt > 0, idle >= minIdle else { return }
-            LookinDiagLog.log("iOS recycle stale peer idle=\(String(format: "%.2f", idle))s — re-listen")
-        } else {
-            LookinDiagLog.log("iOS recycle connected peer — re-listen for new Mac client")
-        }
-        let stale = peer
-        peerChannel_ = nil
-        lastPeerFrameAt = 0
-        stale.cancel()
-    }
-
-    @objc private func _handleWillResignActiveNotification() {
-        applicationIsActive = false
-        if let channel = peerChannel_ {
-            // While listening, isConnected is false — do not close or discovery breaks when
-            // the Mac Lookin app (or verify scripts) takes focus away from the Simulator.
-            if channel.isListening {
-                return
-            }
-            if !channel.isConnected {
-                channel.close()
-                peerChannel_ = nil
-            }
-        }
-        // Physical device: user switches to Mac Lookin — keep (or restart) USB Peertalk listen.
-        ensurePeertalkListenAfterResigningActive()
-    }
-
-    /// On a USB-connected iPhone/iPad, Mac Lookin discovery runs while the iOS app is backgrounded.
-    private func ensurePeertalkListenAfterResigningActive() {
-        #if targetEnvironment(simulator)
-        return
-        #else
-        guard !isiOSAppOnMac() else { return }
-        DispatchQueue.main.async { [weak self] in
-            self?.searchPortToListenIfNoConnection()
-        }
-        #endif
-    }
-
-    @objc private func _handleApplicationDidFinishLaunching() {
-        // Start Peertalk listen early — mac Lookin may scan before the first didBecomeActive.
-        LookinDiagLog.log("iOS didFinishLaunching — schedule Peertalk listen")
-        DispatchQueue.main.async { [weak self] in
-            self?.searchPortToListenIfNoConnection()
-        }
-    }
-
-    @objc private func _handleApplicationDidBecomeActive() {
-        applicationIsActive = true
-        LookinDiagLog.log("iOS didBecomeActive — ensure Peertalk listen")
-        recycleStaleConnectedPeerIfNeeded(minIdle: 0.25)
-        searchPortToListenIfNoConnection()
-    }
-
-    @objc private func _handleSceneDidActivate(_ note: Notification) {
-        applicationIsActive = true
-        LookinDiagLog.log("iOS scene didActivate — ensure Peertalk listen")
-        recycleStaleConnectedPeerIfNeeded(minIdle: 0.25)
-        searchPortToListenIfNoConnection()
-    }
-
-    private func _tryToListenOnPort(from fromPort: Int32, to toPort: Int32, current currentPort: Int32) {
-        let channel = LookinPTChannel.channel(withDelegate: self)
-        channel.targetPort = Int(currentPort)
-        channel.listen(onPort: UInt16(currentPort), ipv4Address: in_addr_t(INADDR_LOOPBACK)) { [weak self] (error: NSError?) in
-            guard let self else { return }
-            if let error {
-                if currentPort < toPort {
-                    NSLog("LookinServer - 127.0.0.1:%d is unavailable(%@). Will try anothor address ...", currentPort, error)
-                    LookinDiagLog.log("Peertalk listen skip port=\(currentPort) errno=\((error as NSError).code)")
-                    self._tryToListenOnPort(from: fromPort, to: toPort, current: currentPort + 1)
-                } else {
-                    NSLog("LookinServer - 127.0.0.1:%d is unavailable(%@).", currentPort, error)
-                    NSLog(
-                        "LookinServer - Peertalk listen FAILED on all ports %d-%d (errno in log above). Rebuild iOS app after pod install.",
-                        fromPort,
-                        toPort
-                    )
-                }
-            } else {
-                NSLog("LookinServer - Connected successfully on 127.0.0.1:%d", currentPort)
-                LookinDiagLog.log("Peertalk listen OK port=\(currentPort)")
-                self.peerChannel_ = channel
-            }
-        }
     }
 
     private func isiOSAppOnMac() -> Bool {
