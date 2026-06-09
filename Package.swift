@@ -202,5 +202,21 @@ let package = Package(
             dependencies: ["LookinServerShared", "LookinServerBase", "LookinServerCore"],
             path: "Tests/LookinServerSharedTests",
         ),
+
+        .testTarget(
+            name: "LookinServerConnectionTests",
+            dependencies: [
+                "LookinServerConnection",
+                "LookinServerShared",
+                "LookinServerBase",
+                "LookinServerCore",
+                "LookinServerCoreSwift",
+                "LookinServerPeertalk",
+                "LookinServerCategories",
+                "LookinServerOthers",
+            ],
+            path: "Tests/LookinServerConnectionTests",
+            swiftSettings: debugLookinSwiftSettings
+        ),
     ]
 )
