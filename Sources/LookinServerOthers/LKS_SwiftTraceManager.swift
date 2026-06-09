@@ -12,6 +12,9 @@ import UIKit
 #if canImport(LookinServerBase)
 import LookinServerBase
 #endif
+#if canImport(LookinServerCategories)
+import LookinServerCategories
+#endif
 
 public class LKS_SwiftTraceManager: NSObject {
     @objc public static func swiftMarkIVars(ofObject hostObject: AnyObject) {

@@ -4,6 +4,9 @@ import UIKit
 #if canImport(LookinServerBase)
 import LookinServerBase
 #endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 extension CALayer {
     @objc(lks_hostView)

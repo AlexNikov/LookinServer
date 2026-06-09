@@ -3,6 +3,9 @@
 import Foundation
 import ObjectiveC
 import UIKit
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 @_silgen_name("LookinObjectGetIvarSELName")
 private func lookinObjectGetIvarSELName(_ object: AnyObject, _ ivar: Ivar) -> UnsafePointer<CChar>?

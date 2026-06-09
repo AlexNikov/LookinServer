@@ -10,17 +10,21 @@
 		B10000012AFFF7E300061A5B /* LookinServer in Frameworks */ = {isa = PBXBuildFile; productRef = B10000022AFFF7E300061A5B /* LookinServer */; };
 		B10000032AFFF7E300061A5B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000042AFFF7E300061A5B /* AppDelegate.swift */; };
 		B10000052AFFF7E300061A5B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000062AFFF7E300061A5B /* SceneDelegate.swift */; };
-		B10000072AFFF7E300061A5B /* SampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000082AFFF7E300061A5B /* SampleViewController.swift */; };
+		B10000072AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000082AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift */; };
 		B10000092AFFF7E300061A5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000A2AFFF7E300061A5B /* Assets.xcassets */; };
+		C10000012AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000022AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift */; };
+		C10000032AFFF7E300061A5B /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = C10000042AFFF7E300061A5B /* LookinDemoObjCBorder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B10000042AFFF7E300061A5B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B10000062AFFF7E300061A5B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
-		B10000082AFFF7E300061A5B /* SampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleViewController.swift; sourceTree = "<group>"; };
+		B10000082AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKCollectionLayoutDemoViewController.swift; sourceTree = "<group>"; };
 		B100000A2AFFF7E300061A5B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		B100000B2AFFF7E300061A5B /* LookinMCPSample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LookinMCPSample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B100000B2AFFF7E300061A5B /* LookinCollectionLayoutDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LookinCollectionLayoutDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B100000C2AFFF7E300061A5B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C10000022AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKCollectionLayoutDemoCells.swift; sourceTree = "<group>"; };
+		C10000042AFFF7E300061A5B /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,37 +42,48 @@
 		B100000E2AFFF7E300061A5B = {
 			isa = PBXGroup;
 			children = (
-				B100000F2AFFF7E300061A5B /* LookinMCPSample */,
+				B100000F2AFFF7E300061A5B /* LookinCollectionLayoutDemo */,
+				C10000052AFFF7E300061A5B /* LookinDemoSharedObjC */,
 				B10000102AFFF7E300061A5B /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		B100000F2AFFF7E300061A5B /* LookinMCPSample */ = {
+		B100000F2AFFF7E300061A5B /* LookinCollectionLayoutDemo */ = {
 			isa = PBXGroup;
 			children = (
 				B10000042AFFF7E300061A5B /* AppDelegate.swift */,
 				B10000062AFFF7E300061A5B /* SceneDelegate.swift */,
-				B10000082AFFF7E300061A5B /* SampleViewController.swift */,
+				B10000082AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift */,
+				C10000022AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift */,
 				B100000A2AFFF7E300061A5B /* Assets.xcassets */,
 				B100000C2AFFF7E300061A5B /* Info.plist */,
 			);
-			path = LookinMCPSample;
+			path = LookinCollectionLayoutDemo;
 			sourceTree = "<group>";
 		};
 		B10000102AFFF7E300061A5B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B100000B2AFFF7E300061A5B /* LookinMCPSample.app */,
+				B100000B2AFFF7E300061A5B /* LookinCollectionLayoutDemo.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C10000052AFFF7E300061A5B /* LookinDemoSharedObjC */ = {
+			isa = PBXGroup;
+			children = (
+				C10000042AFFF7E300061A5B /* LookinDemoObjCBorder.m */,
+			);
+			name = LookinDemoSharedObjC;
+			path = ../Shared/ObjectiveC;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B10000112AFFF7E300061A5B /* LookinMCPSample */ = {
+		B10000112AFFF7E300061A5B /* LookinCollectionLayoutDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B10000122AFFF7E300061A5B /* Build configuration list for PBXNativeTarget "LookinMCPSample" */;
+			buildConfigurationList = B10000122AFFF7E300061A5B /* Build configuration list for PBXNativeTarget "LookinCollectionLayoutDemo" */;
 			buildPhases = (
 				B10000132AFFF7E300061A5B /* Sources */,
 				B100000D2AFFF7E300061A5B /* Frameworks */,
@@ -78,9 +93,9 @@
 			);
 			dependencies = (
 			);
-			name = LookinMCPSample;
-			productName = LookinMCPSample;
-			productReference = B100000B2AFFF7E300061A5B /* LookinMCPSample.app */;
+			name = LookinCollectionLayoutDemo;
+			productName = LookinCollectionLayoutDemo;
+			productReference = B100000B2AFFF7E300061A5B /* LookinCollectionLayoutDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -98,7 +113,7 @@
 					};
 				};
 			};
-			buildConfigurationList = B10000162AFFF7E300061A5B /* Build configuration list for PBXProject "LookinMCPSample" */;
+			buildConfigurationList = B10000162AFFF7E300061A5B /* Build configuration list for PBXProject "LookinCollectionLayoutDemo" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -114,7 +129,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B10000112AFFF7E300061A5B /* LookinMCPSample */,
+				B10000112AFFF7E300061A5B /* LookinCollectionLayoutDemo */,
 			);
 		};
 /* End PBXProject section */
@@ -135,7 +150,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B10000072AFFF7E300061A5B /* SampleViewController.swift in Sources */,
+				B10000072AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift in Sources */,
+				C10000012AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift in Sources */,
+				C10000032AFFF7E300061A5B /* LookinDemoObjCBorder.m in Sources */,
 				B10000032AFFF7E300061A5B /* AppDelegate.swift in Sources */,
 				B10000052AFFF7E300061A5B /* SceneDelegate.swift in Sources */,
 			);
@@ -189,7 +206,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LookinMCPSample/Info.plist;
+				INFOPLIST_FILE = LookinCollectionLayoutDemo/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -199,7 +216,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinMCPSample;
+				INFOPLIST_KEY_CFBundleDisplayName = "CollLayout Swift";
+				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinCollectionLayoutDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -216,7 +234,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LookinMCPSample/Info.plist;
+				INFOPLIST_FILE = LookinCollectionLayoutDemo/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -226,7 +244,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinMCPSample;
+				INFOPLIST_KEY_CFBundleDisplayName = "CollLayout Swift";
+				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinCollectionLayoutDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -238,7 +257,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B10000122AFFF7E300061A5B /* Build configuration list for PBXNativeTarget "LookinMCPSample" */ = {
+		B10000122AFFF7E300061A5B /* Build configuration list for PBXNativeTarget "LookinCollectionLayoutDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B100001A2AFFF7E300061A5B /* Debug */,
@@ -247,7 +266,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B10000162AFFF7E300061A5B /* Build configuration list for PBXProject "LookinMCPSample" */ = {
+		B10000162AFFF7E300061A5B /* Build configuration list for PBXProject "LookinCollectionLayoutDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B10000182AFFF7E300061A5B /* Debug */,

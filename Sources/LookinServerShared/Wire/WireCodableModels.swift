@@ -192,6 +192,11 @@ public struct WireDisplayItemDetailPayload: Codable, Equatable {
 public struct WireErrorPayload: Codable, Equatable {
     public var code: Int
     public var message: String?
+
+    public init(code: Int, message: String? = nil) {
+        self.code = code
+        self.message = message
+    }
 }
 
 /// Server → client JSON frame body.

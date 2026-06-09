@@ -1,8 +1,10 @@
 platform :ios, '16.0'
 use_frameworks!
 
-LOOKIN_SERVER_ROOT = File.expand_path('../../../LookinServer', __dir__)
+install! 'cocoapods', :warn_for_unused_master_specs_repo => false
+
+load File.expand_path('../../cocoapods/install.rb', __dir__)
 
 target 'LookinCollectionLayoutDemo' do
-  pod 'LookinServer', :path => LOOKIN_SERVER_ROOT, :subspecs => ['Swift', 'MCP']
+  install_lookin_server_pods!(path: '../../', subspecs: ['Swift', 'MCP'])
 end

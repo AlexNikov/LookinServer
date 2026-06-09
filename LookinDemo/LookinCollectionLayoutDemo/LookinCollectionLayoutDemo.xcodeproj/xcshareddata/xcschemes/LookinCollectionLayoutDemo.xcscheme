@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B10000112AFFF7E300061A5B"
-               BuildableName = "LookinMCPSample.app"
-               BlueprintName = "LookinMCPSample"
-               ReferencedContainer = "container:LookinMCPSample.xcodeproj">
+               BuildableName = "LookinCollectionLayoutDemo.app"
+               BlueprintName = "LookinCollectionLayoutDemo"
+               ReferencedContainer = "container:LookinCollectionLayoutDemo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -44,9 +44,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B10000112AFFF7E300061A5B"
-            BuildableName = "LookinMCPSample.app"
-            BlueprintName = "LookinMCPSample"
-            ReferencedContainer = "container:LookinMCPSample.xcodeproj">
+            BuildableName = "LookinCollectionLayoutDemo.app"
+            BlueprintName = "LookinCollectionLayoutDemo"
+            ReferencedContainer = "container:LookinCollectionLayoutDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -56,6 +56,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "B10000112AFFF7E300061A5B"
+            BuildableName = "LookinCollectionLayoutDemo.app"
+            BlueprintName = "LookinCollectionLayoutDemo"
+            ReferencedContainer = "container:LookinCollectionLayoutDemo.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

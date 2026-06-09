@@ -4,6 +4,9 @@ import Foundation
 #if canImport(LookinServerBase)
 import LookinServerBase
 #endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 extension NSObject {
     @objc(lks_registerOid)

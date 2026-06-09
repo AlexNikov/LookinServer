@@ -12,7 +12,6 @@
 		B10000072AFFF7E300061A5B /* SampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000082AFFF7E300061A5B /* SampleViewController.swift */; };
 		B10000092AFFF7E300061A5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000A2AFFF7E300061A5B /* Assets.xcassets */; };
 		CCBDE8CAEF91EAD4FE247CDA /* Pods_LookinMCPSample.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 458093CAE05955C0B0828D6C /* Pods_LookinMCPSample.framework */; };
-		756745F4DD554BA2A340B4E0 /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,7 +24,6 @@
 		B100000B2AFFF7E300061A5B /* LookinMCPSample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LookinMCPSample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B100000C2AFFF7E300061A5B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		DF39AB5AEA7EE8302EAD6279 /* Pods-LookinMCPSample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinMCPSample.debug.xcconfig"; path = "Target Support Files/Pods-LookinMCPSample/Pods-LookinMCPSample.debug.xcconfig"; sourceTree = "<group>"; };
-		8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,7 +52,6 @@
 			isa = PBXGroup;
 			children = (
 				B100000F2AFFF7E300061A5B /* LookinMCPSample */,
-				2876C418FC1E4BD896D6C24B /* LookinDemoSharedObjC */,
 				B10000102AFFF7E300061A5B /* Products */,
 				0040FB60121827E3EDFBB65D /* Pods */,
 				F2A247E5C67F4991F8C186FB /* Frameworks */,
@@ -89,15 +86,6 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		2876C418FC1E4BD896D6C24B /* LookinDemoSharedObjC */ = {
-			isa = PBXGroup;
-			children = (
-				8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */,
-			);
-			name = LookinDemoSharedObjC;
-			path = ../Shared/ObjectiveC;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -109,7 +97,7 @@
 				B10000132AFFF7E300061A5B /* Sources */,
 				B100000D2AFFF7E300061A5B /* Frameworks */,
 				B10000142AFFF7E300061A5B /* Resources */,
-				18C38FDC8A15CB9D46E57492 /* [CP] Embed Pods Frameworks */,
+				12B39EA059965709945031D2 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -165,7 +153,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		18C38FDC8A15CB9D46E57492 /* [CP] Embed Pods Frameworks */ = {
+		12B39EA059965709945031D2 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -211,7 +199,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				756745F4DD554BA2A340B4E0 /* LookinDemoObjCBorder.m in Sources */,
 				B10000072AFFF7E300061A5B /* SampleViewController.swift in Sources */,
 				B10000032AFFF7E300061A5B /* AppDelegate.swift in Sources */,
 				B10000052AFFF7E300061A5B /* SceneDelegate.swift in Sources */,
