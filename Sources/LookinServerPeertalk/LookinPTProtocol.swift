@@ -8,7 +8,7 @@ private let ptProtocolVersion1: UInt32 = 1
 
 // Error domain string is declared in Lookin_PTProtocol.h (Peertalk Swift port).
 
-private struct PTFrame {
+private struct PTWireFrameHeader {
     var version: UInt32
     var type: UInt32
     var tag: UInt32
@@ -70,7 +70,7 @@ public class LookinPTProtocol: NSObject {
     }
 
     private func createDispatchData(frameType type: UInt32, frameTag: UInt32, payload: DispatchData?) -> DispatchData {
-        var frame = PTFrame(version: 0, type: 0, tag: 0, payloadSize: 0)
+        var frame = PTWireFrameHeader(version: 0, type: 0, tag: 0, payloadSize: 0)
         frame.version = ptProtocolVersion1.bigEndian
         frame.type = type.bigEndian
         frame.tag = frameTag.bigEndian
@@ -87,7 +87,7 @@ public class LookinPTProtocol: NSObject {
 
         var frameCopy = frame
         let frameData = withUnsafePointer(to: &frameCopy) { ptr -> DispatchData in
-            DispatchData(bytes: UnsafeRawBufferPointer(start: ptr, count: MemoryLayout<PTFrame>.size))
+            DispatchData(bytes: UnsafeRawBufferPointer(start: ptr, count: MemoryLayout<PTWireFrameHeader>.size))
         }
 
         guard let payload, !payload.isEmpty, payloadSize != 0 else {
@@ -127,7 +127,7 @@ public class LookinPTProtocol: NSObject {
         var allData: DispatchData?
         let queue = queue_ ?? DispatchQueue.main
 
-        channel.read(offset: 0, length: MemoryLayout<PTFrame>.size, queue: queue) { done, data, error in
+        channel.read(offset: 0, length: MemoryLayout<PTWireFrameHeader>.size, queue: queue) { done, data, error in
             let dataSize = data?.count ?? 0
 
             if let data, dataSize > 0 {
@@ -152,12 +152,12 @@ public class LookinPTProtocol: NSObject {
                 return
             }
 
-            guard let allData, allData.count >= MemoryLayout<PTFrame>.size else {
+            guard let allData, allData.count >= MemoryLayout<PTWireFrameHeader>.size else {
                 callback(NSError(domain: kLookinPTProtocolErrorDomain, code: 0, userInfo: nil), 0, 0, 0)
                 return
             }
 
-            let frame = allData.lookinCopyBytes().withUnsafeBytes { $0.load(as: PTFrame.self) }
+            let frame = allData.lookinCopyBytes().withUnsafeBytes { $0.load(as: PTWireFrameHeader.self) }
             let version = UInt32(bigEndian: frame.version)
             guard version == ptProtocolVersion1 else {
                 callback(NSError(domain: kLookinPTProtocolErrorDomain, code: 0, userInfo: nil), 0, 0, 0)
