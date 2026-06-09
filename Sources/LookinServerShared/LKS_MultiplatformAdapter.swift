@@ -1,4 +1,4 @@
-#if SHOULD_COMPILE_LOOKIN_SERVER
+#if SHOULD_COMPILE_LOOKIN_SERVER && canImport(UIKit)
 
 import UIKit
 
