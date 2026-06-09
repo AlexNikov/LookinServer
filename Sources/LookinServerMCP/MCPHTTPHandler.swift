@@ -2,75 +2,54 @@
 import Foundation
 import UIKit
 
+@MainActor
 final class MCPHTTPHandler {
-    typealias Completion = (MCPHTTPResponse) -> Void
 
-    @MainActor
     func handle(request: MCPHTTPRequest) async -> MCPHTTPResponse {
-        await withCheckedContinuation { continuation in
-            handle(request: request, completion: continuation.resume(returning:))
-        }
-    }
-
-    func handle(request: MCPHTTPRequest, completion: @escaping Completion) {
         switch (request.method, request.path) {
         case ("GET", "/status"):
-            Task { @MainActor in completion(handleStatus()) }
-            return
+            return handleStatus()
         case ("GET", "/hierarchy"):
-            completion(handleHierarchy())
+            return handleHierarchy()
         case ("GET", "/tap-targets"):
-            handleTapTargets(completion: completion)
-            return
+            return handleTapTargets()
         case ("GET", "/wire-roundtrip"):
-            completion(handleWireRoundtrip())
+            return handleWireRoundtrip()
         case ("GET", "/wire-v2-selftest"):
-            Task { @MainActor in completion(await handleWireV2SelfTest()) }
-            return
+            return await handleWireV2SelfTest()
         case ("POST", "/relisten-peertalk"):
-            Task { @MainActor in completion(handleRelistenPeertalk()) }
-            return
+            return handleRelistenPeertalk()
         default:
             if request.oidParam > 0, request.path.hasSuffix("/attributes") {
                 if request.method == "GET" {
-                    completion(handleGetAttributes(oid: request.oidParam))
-                    return
+                    return handleGetAttributes(oid: request.oidParam)
                 }
                 if request.method == "POST" {
-                    Task { @MainActor in
-                        let response = await handleModifyAttribute(oid: request.oidParam, body: request.jsonBody)
-                        completion(response)
-                    }
-                    return
+                    return await handleModifyAttribute(oid: request.oidParam, body: request.jsonBody)
                 }
             }
 
             if request.oidParam > 0, request.method == "GET", request.path.hasSuffix("/screenshot") {
-                completion(handleScreenshot(oid: request.oidParam))
-                return
+                return handleScreenshot(oid: request.oidParam)
             }
 
             if request.method == "POST", request.path == "/tap" {
-                handleTap(body: request.jsonBody, completion: completion)
-                return
+                return handleTap(body: request.jsonBody)
             }
 
             if request.method == "POST", request.path == "/swipe" {
-                handleSwipe(body: request.jsonBody, completion: completion)
-                return
+                return await handleSwipe(body: request.jsonBody)
             }
 
-            completion(.error(message: "Not found", statusCode: 404))
+            return .error(message: "Not found", statusCode: 404)
         }
     }
 
-    @MainActor
     private func handleRelistenPeertalk() -> MCPHTTPResponse {
         LKS_ConnectionManager.sharedInstance.prepareForNewMacClientConnection()
         return .ok(data: ["relisten": true])
     }
 
-    @MainActor
     private func handleStatus() -> MCPHTTPResponse {
         let manager = LKS_ConnectionManager.sharedInstance
         manager.nudgePeertalkListenForLaunchScreenDiscoveryIfNeeded()
@@ -91,7 +70,6 @@ final class MCPHTTPHandler {
         return .ok(data: data)
     }
 
-    @MainActor
     private func handleWireV2SelfTest() async -> MCPHTTPResponse {
         let tag: UInt32 = 424_242
         let pingJSON = Data(
@@ -383,16 +361,13 @@ final class MCPHTTPHandler {
 
     // MARK: - GET /tap-targets
 
-    private func handleTapTargets(completion: @escaping Completion) {
-        DispatchQueue.main.async {
-            guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
-                completion(.error(message: "No key window found", statusCode: 503))
-                return
-            }
-            var targets: [[String: Any]] = []
-            self.collectTapTargets(in: keyWindow, window: keyWindow, targets: &targets)
-            completion(.ok(data: ["count": targets.count, "targets": targets]))
+    private func handleTapTargets() -> MCPHTTPResponse {
+        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
+            return .error(message: "No key window found", statusCode: 503)
         }
+        var targets: [[String: Any]] = []
+        collectTapTargets(in: keyWindow, window: keyWindow, targets: &targets)
+        return .ok(data: ["count": targets.count, "targets": targets])
     }
 
     private func collectTapTargets(in view: UIView, window: UIWindow, targets: inout [[String: Any]]) {
@@ -522,15 +497,14 @@ final class MCPHTTPHandler {
 
     // MARK: - POST /tap
 
-    private func handleTap(body: [String: Any]?, completion: @escaping Completion) {
+    private func handleTap(body: [String: Any]?) -> MCPHTTPResponse {
         var tapPoint: CGPoint?
 
         // Priority 1: tap by oid
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
             let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
             guard let obj = NSObject.lks_object(withOid: oid) else {
-                completion(.error(message: "Object with oid \(oid) not found", statusCode: 404))
-                return
+                return .error(message: "Object with oid \(oid) not found", statusCode: 404)
             }
             let view: UIView?
             if let v = obj as? UIView {
@@ -541,13 +515,11 @@ final class MCPHTTPHandler {
                 view = nil
             }
             guard let v = view else {
-                completion(.error(message: "View is not attached to a window", statusCode: 400))
-                return
+                return .error(message: "View is not attached to a window", statusCode: 400)
             }
             let window = (v as? UIWindow) ?? v.window
             guard let w = window else {
-                completion(.error(message: "View is not attached to a window", statusCode: 400))
-                return
+                return .error(message: "View is not attached to a window", statusCode: 400)
             }
             let boundsInWindow = v.convert(v.bounds, to: w)
             tapPoint = CGPoint(x: boundsInWindow.midX, y: boundsInWindow.midY)
@@ -556,30 +528,24 @@ final class MCPHTTPHandler {
         // Priority 2: tap by x/y
         if tapPoint == nil {
             guard let x = body?["x"] as? CGFloat, let y = body?["y"] as? CGFloat else {
-                completion(.error(message: "Provide either 'oid' or 'x'+'y' coordinates", statusCode: 400))
-                return
+                return .error(message: "Provide either 'oid' or 'x'+'y' coordinates", statusCode: 400)
             }
             tapPoint = CGPoint(x: x, y: y)
         }
 
         let point = tapPoint!
-        DispatchQueue.main.async {
-            guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
-                completion(.error(message: "No key window found", statusCode: 503))
-                return
-            }
-            let sent = self.sendSyntheticTap(at: point, in: keyWindow)
-            if sent {
-                completion(.ok(data: ["tapped": true, "x": point.x, "y": point.y]))
-            } else {
-                completion(.error(message: "Failed to synthesize tap event", statusCode: 500))
-            }
+        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
+            return .error(message: "No key window found", statusCode: 503)
         }
+        if sendSyntheticTap(at: point, in: keyWindow) {
+            return .ok(data: ["tapped": true, "x": point.x, "y": point.y])
+        }
+        return .error(message: "Failed to synthesize tap event", statusCode: 500)
     }
 
     // MARK: - POST /swipe
 
-    private func handleSwipe(body: [String: Any]?, completion: @escaping Completion) {
+    private func handleSwipe(body: [String: Any]?) async -> MCPHTTPResponse {
         var fromPoint: CGPoint?
         var toPoint: CGPoint?
 
@@ -587,8 +553,7 @@ final class MCPHTTPHandler {
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
             let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
             guard let obj = NSObject.lks_object(withOid: oid) else {
-                completion(.error(message: "Object with oid \(oid) not found", statusCode: 404))
-                return
+                return .error(message: "Object with oid \(oid) not found", statusCode: 404)
             }
             let view: UIView?
             if let v = obj as? UIView { view = v }
@@ -597,8 +562,7 @@ final class MCPHTTPHandler {
 
             let window = (view as? UIWindow) ?? view?.window
             guard let v = view, window != nil else {
-                completion(.error(message: "View is not attached to a window", statusCode: 400))
-                return
+                return .error(message: "View is not attached to a window", statusCode: 400)
             }
             let boundsInWindow = v.convert(v.bounds, to: window)
             let midX = boundsInWindow.midX, midY = boundsInWindow.midY
@@ -625,8 +589,10 @@ final class MCPHTTPHandler {
         if fromPoint == nil {
             guard let fx = body?["fromX"] as? CGFloat, let fy = body?["fromY"] as? CGFloat,
                   let tx = body?["toX"] as? CGFloat,   let ty = body?["toY"] as? CGFloat else {
-                completion(.error(message: "Provide 'oid' (+ optional 'direction': up/down/left/right) or 'fromX'+'fromY'+'toX'+'toY'", statusCode: 400))
-                return
+                return .error(
+                    message: "Provide 'oid' (+ optional 'direction': up/down/left/right) or 'fromX'+'fromY'+'toX'+'toY'",
+                    statusCode: 400
+                )
             }
             fromPoint = CGPoint(x: fx, y: fy)
             toPoint   = CGPoint(x: tx, y: ty)
@@ -636,60 +602,62 @@ final class MCPHTTPHandler {
         var duration = (body?["duration"] as? TimeInterval) ?? 0.3
         duration = min(max(duration, 0.05), 3.0)
 
-        DispatchQueue.main.async {
-            guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
-                completion(.error(message: "No key window found", statusCode: 503))
-                return
-            }
+        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
+            return .error(message: "No key window found", statusCode: 503)
+        }
 
-            // Find scroll view under touch
-            let hitView = keyWindow.hitTest(from, with: nil)
-            var scrollView: UIScrollView? = nil
-            var candidate: UIView? = hitView
-            while let c = candidate {
-                if let sv = c as? UIScrollView { scrollView = sv; break }
-                candidate = c.superview
-            }
+        let hitView = keyWindow.hitTest(from, with: nil)
+        var scrollView: UIScrollView?
+        var candidate: UIView? = hitView
+        while let c = candidate {
+            if let sv = c as? UIScrollView { scrollView = sv; break }
+            candidate = c.superview
+        }
 
-            if let sv = scrollView {
-                let delta = CGPoint(x: from.x - to.x, y: from.y - to.y)
-                let maxX = max(0, sv.contentSize.width  - sv.bounds.width)
-                let maxY = max(0, sv.contentSize.height - sv.bounds.height)
-                let newOffset = CGPoint(
-                    x: min(max(sv.contentOffset.x + delta.x, 0), maxX),
-                    y: min(max(sv.contentOffset.y + delta.y, 0), maxY)
-                )
-                UIView.animate(withDuration: duration) { sv.contentOffset = newOffset }
-                NSLog("LookinServer MCP - swipe ScrollView offset→(%.1f,%.1f)", newOffset.x, newOffset.y)
-            } else if let view = hitView {
-                // Pan / swipe gesture fallback
-                var handled = false
-                var responder: UIView? = view
-                while let r = responder {
-                    for gr in r.gestureRecognizers ?? [] {
-                        if gr is UIPanGestureRecognizer || gr is UISwipeGestureRecognizer {
-                            let setSel = NSSelectorFromString("setState:")
-                            if gr.responds(to: setSel) {
-                                gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.recognized.rawValue))
-                                handled = true; break
-                            }
+        if let sv = scrollView {
+            let delta = CGPoint(x: from.x - to.x, y: from.y - to.y)
+            let maxX = max(0, sv.contentSize.width - sv.bounds.width)
+            let maxY = max(0, sv.contentSize.height - sv.bounds.height)
+            let newOffset = CGPoint(
+                x: min(max(sv.contentOffset.x + delta.x, 0), maxX),
+                y: min(max(sv.contentOffset.y + delta.y, 0), maxY)
+            )
+            UIView.animate(withDuration: duration) { sv.contentOffset = newOffset }
+            NSLog("LookinServer MCP - swipe ScrollView offset→(%.1f,%.1f)", newOffset.x, newOffset.y)
+        } else if let view = hitView {
+            var handled = false
+            var responder: UIView? = view
+            while let r = responder {
+                for gr in r.gestureRecognizers ?? [] {
+                    if gr is UIPanGestureRecognizer || gr is UISwipeGestureRecognizer {
+                        let setSel = NSSelectorFromString("setState:")
+                        if gr.responds(to: setSel) {
+                            gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.recognized.rawValue))
+                            handled = true
+                            break
                         }
                     }
-                    if handled { break }
-                    responder = r.superview
                 }
-                if !handled {
-                    view.touchesBegan([], with: UIEvent())
-                    view.touchesEnded([], with: UIEvent())
-                }
-                NSLog("LookinServer MCP - swipe synthetic on %@", NSStringFromClass(type(of: view)))
+                if handled { break }
+                responder = r.superview
             }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
-                completion(.ok(data: ["swiped": true, "fromX": from.x, "fromY": from.y,
-                                      "toX": to.x, "toY": to.y, "duration": duration]))
+            if !handled {
+                view.touchesBegan([], with: UIEvent())
+                view.touchesEnded([], with: UIEvent())
             }
+            NSLog("LookinServer MCP - swipe synthetic on %@", NSStringFromClass(type(of: view)))
         }
+
+        let settleDelay = duration + 0.05
+        try? await Task.sleep(nanoseconds: UInt64(settleDelay * 1_000_000_000))
+        return .ok(data: [
+            "swiped": true,
+            "fromX": from.x,
+            "fromY": from.y,
+            "toX": to.x,
+            "toY": to.y,
+            "duration": duration,
+        ])
     }
 
     private func sendSyntheticTap(at point: CGPoint, in window: UIWindow) -> Bool {

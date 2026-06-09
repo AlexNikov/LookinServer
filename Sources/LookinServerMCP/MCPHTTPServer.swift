@@ -9,7 +9,7 @@ public final class MCPHTTPServer: NSObject {
 
     private let queue = DispatchQueue(label: "lookin.mcp.http")
     private var listener: NWListener?
-    private let handler = MCPHTTPHandler()
+    @MainActor private var handler: MCPHTTPHandler?
 
     /// ObjC entry from `LKS_ConnectionManager` (`performSelector` passes `NSNumber`).
     @objc(startWithPort:)
@@ -65,9 +65,17 @@ public final class MCPHTTPServer: NSObject {
                 await self.send(response: .error(message: "Bad request", statusCode: 400), on: connection)
                 return
             }
-            let response = await self.handler.handle(request: request)
+            let response = await self.handleRequest(request)
             await self.send(response: response, on: connection)
         }
+    }
+
+    @MainActor
+    private func handleRequest(_ request: MCPHTTPRequest) async -> MCPHTTPResponse {
+        if handler == nil {
+            handler = MCPHTTPHandler()
+        }
+        return await handler!.handle(request: request)
     }
 
     private func receive(from connection: NWConnection) async -> Data? {
