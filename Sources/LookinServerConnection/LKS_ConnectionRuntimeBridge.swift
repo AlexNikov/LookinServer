@@ -10,20 +10,13 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
     private static let setOpacitySelector = NSSelectorFromString("setOpacity:")
 
     public static func handleInbuiltAttrModification(
-        _ modification: LookinAttributeModification?,
-        completion: @escaping (LookinDisplayItemDetail?, Error?) -> Void
-    ) {
-        guard let modification else {
-            completion(nil, lookinInnerError())
-            return
-        }
-
+        _ modification: LookinAttributeModification
+    ) async throws -> LookinDisplayItemDetail {
         guard let receiver = NSObject.lks_object(withOid: modification.targetOid) else {
             LookinDiagLog.log(
                 "inbuilt FAIL objNotFound targetOid=\(modification.targetOid) attr=\(modification.attrIdentifier ?? "?") sel=\(NSStringFromSelector(modification.setterSelector))"
             )
-            completion(nil, lookinErrObjNotFound())
-            return
+            throw lookinErrObjNotFound()
         }
 
         let visibilityOnly = isVisibilityOnlyModification(modification)
@@ -31,71 +24,54 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
             "inbuilt recv oid=\(modification.targetOid) class=\(NSStringFromClass(type(of: receiver))) visibilityOnly=\(visibilityOnly) attr=\(modification.attrIdentifier ?? "?") sel=\(NSStringFromSelector(modification.setterSelector))"
         )
 
-        // Never main.sync when hopping threads — Peertalk may already be on main; sync deadlocks (client timeout).
-        // Run immediately when already on main so visibility replies are not stuck behind a backed-up main queue.
-        let work: () -> Void = {
-            if visibilityOnly {
-                var invokeError: NSError?
-                if let applyError = applyVisibilityModification(modification, to: receiver) as NSError? {
-                    if applyError.code == LookinSharedErrCode.exception.rawValue {
-                        invokeError = applyError
-                    } else {
-                        completion(nil, applyError)
-                        return
-                    }
-                }
-                if let detail = makeVisibilityDetail(for: modification, receiver: receiver) {
-                    LookinDiagLog.log(
-                        "inbuilt OK visibility detailOid=\(detail.displayItemOid) hidden=\(detail.hiddenValue?.boolValue ?? false)"
-                    )
-                    completion(detail, invokeError)
-                } else {
-                    LookinDiagLog.log("inbuilt FAIL visibility detail nil oid=\(modification.targetOid)")
-                    completion(nil, lookinErrObjNotFound())
-                }
-                return
-            }
-
-            var invokeError: NSError?
-            if let validationError = LKS_InvocationRuntimeHelper.applySetter(
-                for: modification,
-                receiver: receiver
-            ) as NSError? {
-                if validationError.code == LookinSharedErrCode.exception.rawValue {
-                    invokeError = validationError
-                } else {
-                    completion(nil, validationError)
-                    return
+        if visibilityOnly {
+            if let applyError = applyVisibilityModification(modification, to: receiver) as NSError? {
+                if applyError.code != LookinSharedErrCode.exception.rawValue {
+                    throw applyError
                 }
             }
-
-            guard let layer = layer(for: receiver) else {
-                completion(nil, lookinErrObjNotFound())
-                return
+            guard let detail = makeVisibilityDetail(for: modification, receiver: receiver) else {
+                LookinDiagLog.log("inbuilt FAIL visibility detail nil oid=\(modification.targetOid)")
+                throw lookinErrObjNotFound()
             }
-
-            var detail = LookinDisplayItemDetail()
-            detail.displayItemOid = Self.preferredDisplayItemOid(for: receiver, fallback: modification.targetOid)
-            detail.frameValue = NSValue(cgRect: layer.frame)
-            detail.boundsValue = NSValue(cgRect: layer.bounds)
-            fillVisibilityFields(in: detail, layer: layer)
-
-            detail.attributesGroupList = LKS_AttrGroupsMaker.attrGroups(for: layer) as? [LookinAttributesGroup]
-
-            if let version = modification.clientReadableVersion,
-               !version.isEmpty,
-               version.lookin_numbericOSVersion() >= 10004 {
-                let maker = LKS_CustomAttrGroupsMaker(layer: layer)
-                maker.execute()
-                detail.customAttrGroupList = maker.getGroups() as? [LookinAttributesGroup]
-            }
-
             LookinDiagLog.log(
-                "inbuilt OK full path detailOid=\(detail.displayItemOid) attrGroups=\(detail.attributesGroupList?.count ?? 0)"
+                "inbuilt OK visibility detailOid=\(detail.displayItemOid) hidden=\(detail.hiddenValue?.boolValue ?? false)"
             )
-            completion(detail, invokeError)
+            return detail
         }
-        work()
+
+        if let validationError = LKS_InvocationRuntimeHelper.applySetter(
+            for: modification,
+            receiver: receiver
+        ) as NSError? {
+            if validationError.code != LookinSharedErrCode.exception.rawValue {
+                throw validationError
+            }
+        }
+
+        guard let layer = layer(for: receiver) else {
+            throw lookinErrObjNotFound()
+        }
+
+        var detail = LookinDisplayItemDetail()
+        detail.displayItemOid = Self.preferredDisplayItemOid(for: receiver, fallback: modification.targetOid)
+        detail.frameValue = NSValue(cgRect: layer.frame)
+        detail.boundsValue = NSValue(cgRect: layer.bounds)
+        fillVisibilityFields(in: detail, layer: layer)
+        detail.attributesGroupList = LKS_AttrGroupsMaker.attrGroups(for: layer) as? [LookinAttributesGroup]
+
+        if let version = modification.clientReadableVersion,
+           !version.isEmpty,
+           version.lookin_numbericOSVersion() >= 10004 {
+            let maker = LKS_CustomAttrGroupsMaker(layer: layer)
+            maker.execute()
+            detail.customAttrGroupList = maker.getGroups() as? [LookinAttributesGroup]
+        }
+
+        LookinDiagLog.log(
+            "inbuilt OK full path detailOid=\(detail.displayItemOid) attrGroups=\(detail.attributesGroupList?.count ?? 0)"
+        )
+        return detail
     }
 
     /// Hidden/Opacity: skip attr-group rebuild; assign properties directly (no invokeSetter — avoids UIView layout hangs).
@@ -213,25 +189,27 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         return lookinInnerError()
     }
 
-    public static func handlePatch(with tasks: [LookinStaticAsyncUpdateTask], block: @escaping (LookinDisplayItemDetail) -> Void) {
-        for task in tasks {
-            var itemDetail = LookinDisplayItemDetail()
-            itemDetail.displayItemOid = task.oid
+    public static func handlePatch(with tasks: [LookinStaticAsyncUpdateTask]) -> AsyncStream<LookinDisplayItemDetail> {
+        AsyncStream { continuation in
+            Task { @MainActor in
+                for task in tasks {
+                    var itemDetail = LookinDisplayItemDetail()
+                    itemDetail.displayItemOid = task.oid
 
-            guard let object = NSObject.lks_object(withOid: task.oid) as? CALayer else {
-                block(itemDetail)
-                continue
+                    if let object = NSObject.lks_object(withOid: task.oid) as? CALayer {
+                        switch task.taskType {
+                        case .soloScreenshot:
+                            itemDetail.soloScreenshot = object.lks_soloScreenshot(withLowQuality: false)
+                        case .groupScreenshot:
+                            itemDetail.groupScreenshot = object.lks_groupScreenshot(withLowQuality: false)
+                        default:
+                            break
+                        }
+                    }
+                    continuation.yield(itemDetail)
+                }
+                continuation.finish()
             }
-
-            switch task.taskType {
-            case .soloScreenshot:
-                itemDetail.soloScreenshot = object.lks_soloScreenshot(withLowQuality: false)
-            case .groupScreenshot:
-                itemDetail.groupScreenshot = object.lks_groupScreenshot(withLowQuality: false)
-            default:
-                break
-            }
-            block(itemDetail)
         }
     }
 

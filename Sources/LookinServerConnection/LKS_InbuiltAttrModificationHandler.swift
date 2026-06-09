@@ -2,28 +2,15 @@
 
 import Foundation
 
-public final class LKS_InbuiltAttrModificationHandler: NSObject {
+public enum LKS_InbuiltAttrModificationHandler {
 
     public static func handleModification(
-        _ modification: LookinAttributeModification?,
-        completion: @escaping (LookinDisplayItemDetail?, Error?) -> Void
-    ) {
+        _ modification: LookinAttributeModification?
+    ) async throws -> LookinDisplayItemDetail {
         guard let modification else {
-            completion(nil, LookinConnectionErrors.inner)
-            return
+            throw LookinConnectionErrors.inner
         }
-        Task { @MainActor in
-            LKS_ConnectionRuntimeBridge.handleInbuiltAttrModification(modification, completion: completion)
-        }
-    }
-
-    public static func handlePatchWithTasks(
-        _ tasks: [LookinStaticAsyncUpdateTask],
-        block: @escaping (LookinDisplayItemDetail) -> Void
-    ) {
-        Task { @MainActor in
-            LKS_ConnectionRuntimeBridge.handlePatch(with: tasks, block: block)
-        }
+        return try await LKS_ConnectionRuntimeBridge.handleInbuiltAttrModification(modification)
     }
 }
 

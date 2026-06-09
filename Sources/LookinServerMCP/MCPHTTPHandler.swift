@@ -34,7 +34,10 @@ final class MCPHTTPHandler {
                     return
                 }
                 if request.method == "POST" {
-                    handleModifyAttribute(oid: request.oidParam, body: request.jsonBody, completion: completion)
+                    Task { @MainActor in
+                        let response = await handleModifyAttribute(oid: request.oidParam, body: request.jsonBody)
+                        completion(response)
+                    }
                     return
                 }
             }
@@ -298,18 +301,16 @@ final class MCPHTTPHandler {
         return dict
     }
 
-    private func handleModifyAttribute(oid: UInt, body: [String: Any]?, completion: @escaping Completion) {
+    private func handleModifyAttribute(oid: UInt, body: [String: Any]?) async -> MCPHTTPResponse {
         guard let body,
               body["setterSelector"] != nil,
               body["attrType"] != nil,
               body["value"] != nil else {
-            completion(.error(message: "Required fields: setterSelector, attrType, value", statusCode: 400))
-            return
+            return .error(message: "Required fields: setterSelector, attrType, value", statusCode: 400)
         }
 
         guard NSObject.lks_object(withOid: oid) != nil else {
-            completion(.error(message: "Object with oid \(oid) not found", statusCode: 404))
-            return
+            return .error(message: "Object with oid \(oid) not found", statusCode: 404)
         }
 
         var mod = LKAttributeModification()
@@ -321,20 +322,17 @@ final class MCPHTTPHandler {
         mod.value = WireAttributeMapper.lookinValue(fromMCPJSON: body["value"], attrType: mod.attrType)
 
         guard mod.value != nil else {
-            completion(.error(message: "Failed to parse 'value' for the given attrType", statusCode: 400))
-            return
+            return .error(message: "Failed to parse 'value' for the given attrType", statusCode: 400)
         }
 
         LookinDiagLog.log("MCP modify oid=\(oid) sel=\(body["setterSelector"] ?? "?") attrType=\(attrTypeRaw)")
-        let coreModification = mod
-        LKS_InbuiltAttrModificationHandler.handleModification(coreModification) { _, error in
-            if let error {
-                LookinDiagLog.log("MCP modify FAIL oid=\(oid) \(error.localizedDescription)")
-                completion(.error(message: error.localizedDescription, statusCode: 500))
-            } else {
-                LookinDiagLog.log("MCP modify OK oid=\(oid)")
-                completion(.ok(data: ["modified": true]))
-            }
+        do {
+            _ = try await LKS_InbuiltAttrModificationHandler.handleModification(mod)
+            LookinDiagLog.log("MCP modify OK oid=\(oid)")
+            return .ok(data: ["modified": true])
+        } catch {
+            LookinDiagLog.log("MCP modify FAIL oid=\(oid) \(error.localizedDescription)")
+            return .error(message: error.localizedDescription, statusCode: 500)
         }
     }
 
