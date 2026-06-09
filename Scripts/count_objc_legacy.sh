@@ -11,6 +11,7 @@ count_rg() {
   local pattern="$1"
   local path="$2"
   rg -c "$pattern" "$path" 2>/dev/null | awk -F: '{s+=$2} END {print s+0}'
+  true
 }
 
 LEGACY_M=$(find "$ROOT/Sources" -name '*.m' 2>/dev/null | wc -l | tr -d ' ')

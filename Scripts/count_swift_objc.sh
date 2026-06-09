@@ -34,7 +34,7 @@ LOOKINCLIENT_NON_UI=$(rg -c '@objc\(' "$REPO/Lookin/LookinClient" --glob '*.swif
   if (f ~ /\/Base\// || f ~ /\/Dashboard\// || f ~ /\/Static\// || f ~ /\/Connection\//) next
   s += c
 }
-END { print s+0 }')
+END { print s+0 }' || true)
 
 LOG_DIR="$REPO/lookin-verify-logs"
 mkdir -p "$LOG_DIR"

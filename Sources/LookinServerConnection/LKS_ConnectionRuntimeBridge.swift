@@ -57,7 +57,7 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         detail.displayItemOid = Self.preferredDisplayItemOid(for: receiver, fallback: modification.targetOid)
         detail.frameValue = NSValue(cgRect: layer.frame)
         detail.boundsValue = NSValue(cgRect: layer.bounds)
-        fillVisibilityFields(in: detail, layer: layer)
+        fillVisibilityFields(in: &detail, layer: layer)
         detail.attributesGroupList = LKS_AttrGroupsMaker.attrGroups(for: layer) as? [LookinAttributesGroup]
 
         if let version = modification.clientReadableVersion,
@@ -120,7 +120,7 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         return nil
     }
 
-    private static func fillVisibilityFields(in detail: LookinDisplayItemDetail, layer: CALayer) {
+    private static func fillVisibilityFields(in detail: inout LookinDisplayItemDetail, layer: CALayer) {
         if let hostView = layer.lks_hostView {
             detail.hiddenValue = NSNumber(value: hostView.isHidden)
             detail.alphaValue = NSNumber(value: hostView.alpha)
@@ -137,7 +137,7 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         guard let layer = layer(for: receiver) else { return nil }
         var detail = LookinDisplayItemDetail()
         detail.displayItemOid = preferredDisplayItemOid(for: receiver, fallback: modification.targetOid)
-        fillVisibilityFields(in: detail, layer: layer)
+        fillVisibilityFields(in: &detail, layer: layer)
         return detail
     }
 

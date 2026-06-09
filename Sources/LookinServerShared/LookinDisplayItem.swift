@@ -83,7 +83,7 @@ public class LookinDisplayItem: NSObject, NSCopying {
         didSet { bindAttributes(to: customAttrGroupList) }
     }
 
-    public var eventHandlers: [NSObject]?
+    public var eventHandlers: [LookinEventHandler]?
     public var representedAsKeyWindow: Bool = false
     public var backgroundColor: LookinColor?
     public var shouldCaptureImage: Bool = true

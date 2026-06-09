@@ -6,7 +6,6 @@ import UIKit
 @objc(LKS_EventHandlerMaker)
 public final class LKS_EventHandlerMaker: NSObject {
 
-    @objc(makeForView:)
     public static func make(for view: UIView?) -> [LookinEventHandler]? {
         guard let view else { return nil }
 
@@ -46,7 +45,7 @@ public final class LKS_EventHandlerMaker: NSObject {
                       let target = container.object else {
                     return nil
                 }
-                let newTuple = LookinStringTwoTuple()
+                var newTuple = LookinStringTwoTuple()
                 newTuple.first = LKS_Helper.description(of: target)
                 newTuple.second = tuple.second as? String
                 return newTuple

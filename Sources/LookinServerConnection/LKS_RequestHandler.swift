@@ -4,7 +4,7 @@ import Foundation
 import UIKit
 
 @MainActor
-public actor LKS_RequestHandler {
+public final class LKS_RequestHandler {
 
     private let validRequestTypes: Set<UInt32>
     private var activeDetailTasks: [UUID: Task<Void, Never>] = [:]
@@ -102,8 +102,7 @@ public actor LKS_RequestHandler {
             }
 
         case UInt32(LookinRequestTypeAttrModificationPatch):
-            guard let rawTasks = object as? [NSObject], !rawTasks.isEmpty else { return }
-            let tasks = rawTasks.map { unsafeDowncast($0, to: LookinStaticAsyncUpdateTask.self) }
+            guard let tasks = object as? [LookinStaticAsyncUpdateTask], !tasks.isEmpty else { return }
             let dataTotalCount = tasks.count
             for await detail in LKS_ConnectionRuntimeBridge.handlePatch(with: tasks) {
                 var attrAttachment = LKConnectionResponseAttachment()

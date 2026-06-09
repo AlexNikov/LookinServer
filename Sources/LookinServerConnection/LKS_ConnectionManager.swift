@@ -150,7 +150,6 @@ public final class LKS_ConnectionManager: NSObject {
 
     // MARK: - Public API
 
-    @objc(respond:requestType:tag:)
     public func respond(_ data: LKConnectionResponseAttachment, requestType: UInt32, tag: UInt32) {
         respondWireV2(data, requestType: requestType, tag: tag)
     }
@@ -274,14 +273,18 @@ public final class LKS_ConnectionManager: NSObject {
     }
 
     private func runAcceptLoop(on listenChannel: PTChannel) async {
-        for await peer in listenChannel.acceptedChannels() {
+        for await peer in await listenChannel.acceptedChannels() {
             let previous = peerChannel
             peerChannel = peer
             peerChannelUniqueID = await peer.uniqueID
             await updatePeertalkCache(using: peer)
             lastPeerFrameAt = Date().timeIntervalSince1970
-            if let previous, await previous.uniqueID != await listenChannel.uniqueID {
-                await previous.cancel()
+            if let previous {
+                let previousID = await previous.uniqueID
+                let listenID = await listenChannel.uniqueID
+                if previousID != listenID {
+                    await previous.cancel()
+                }
             }
             frameLoopTask?.cancel()
             frameLoopTask = Task { @MainActor [weak self] in
@@ -294,7 +297,7 @@ public final class LKS_ConnectionManager: NSObject {
     private func runFrameLoop(on channel: PTChannel) async {
         let channelID = await channel.uniqueID
         do {
-            for try await frame in channel.frames() {
+            for try await frame in await channel.frames() {
                 guard peerChannelUniqueID == channelID else { break }
                 lastPeerFrameAt = Date().timeIntervalSince1970
                 await handleFrame(frame)

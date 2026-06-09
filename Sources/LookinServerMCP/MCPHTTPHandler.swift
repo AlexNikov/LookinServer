@@ -15,7 +15,8 @@ final class MCPHTTPHandler {
     func handle(request: MCPHTTPRequest, completion: @escaping Completion) {
         switch (request.method, request.path) {
         case ("GET", "/status"):
-            completion(handleStatus())
+            Task { @MainActor in completion(handleStatus()) }
+            return
         case ("GET", "/hierarchy"):
             completion(handleHierarchy())
         case ("GET", "/tap-targets"):
@@ -24,9 +25,11 @@ final class MCPHTTPHandler {
         case ("GET", "/wire-roundtrip"):
             completion(handleWireRoundtrip())
         case ("GET", "/wire-v2-selftest"):
-            completion(handleWireV2SelfTest())
+            Task { @MainActor in completion(await handleWireV2SelfTest()) }
+            return
         case ("POST", "/relisten-peertalk"):
-            completion(handleRelistenPeertalk())
+            Task { @MainActor in completion(handleRelistenPeertalk()) }
+            return
         default:
             if request.oidParam > 0, request.path.hasSuffix("/attributes") {
                 if request.method == "GET" {
@@ -61,16 +64,13 @@ final class MCPHTTPHandler {
         }
     }
 
+    @MainActor
     private func handleRelistenPeertalk() -> MCPHTTPResponse {
-        let work = { LKS_ConnectionManager.sharedInstance.prepareForNewMacClientConnection() }
-        if Thread.isMainThread {
-            work()
-        } else {
-            DispatchQueue.main.sync(execute: work)
-        }
+        LKS_ConnectionManager.sharedInstance.prepareForNewMacClientConnection()
         return .ok(data: ["relisten": true])
     }
 
+    @MainActor
     private func handleStatus() -> MCPHTTPResponse {
         let manager = LKS_ConnectionManager.sharedInstance
         manager.nudgePeertalkListenForLaunchScreenDiscoveryIfNeeded()
@@ -91,7 +91,8 @@ final class MCPHTTPHandler {
         return .ok(data: data)
     }
 
-    private func handleWireV2SelfTest() -> MCPHTTPResponse {
+    @MainActor
+    private func handleWireV2SelfTest() async -> MCPHTTPResponse {
         let tag: UInt32 = 424_242
         let pingJSON = Data(
             "{\"requestType\":200,\"tag\":\(tag),\"wireVersion\":\(LookinWireFormat.version)}".utf8
@@ -150,7 +151,7 @@ final class MCPHTTPHandler {
         let responseHasPing = responseJSON.contains(UInt8(ascii: "p")) // "ping" key in JSON
 
         let manager = LKS_ConnectionManager.sharedInstance
-        manager.handleWireJSONRequest(requestEnvelope, tag: tag)
+        await manager.handleWireJSONRequest(requestEnvelope, tag: tag)
 
         return .ok(data: [
             "decodeOk": decodeOk,
