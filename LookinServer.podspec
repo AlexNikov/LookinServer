@@ -11,7 +11,7 @@ Pod::Spec.new do |spec|
   spec.ios.deployment_target  = "14.0"
   spec.tvos.deployment_target  = "14.0"
   spec.visionos.deployment_target = "1.0"
-  spec.default_subspecs = "Swift"
+  spec.default_subspecs = ['Swift', 'MCP']
   spec.source       = { :git => "https://github.com/AlexNikov/LookinServer.git", :branch => "develop" }
   spec.framework    = "UIKit"
   spec.requires_arc = true
