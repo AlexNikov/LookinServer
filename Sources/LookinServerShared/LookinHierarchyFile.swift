@@ -1,15 +1,14 @@
 import Foundation
 
-public class LookinHierarchyFile: NSObject {
+public struct LookinHierarchyFile {
     public var serverVersion: Int32 = 0
     public var hierarchyInfo: LookinHierarchyInfo?
     public var soloScreenshots: [NSNumber: Data]?
     public var groupScreenshots: [NSNumber: Data]?
 
-    public override init() {
-        super.init()
-    }
-    public class func verify(_ hierarchyFile: LookinHierarchyFile?) -> NSError? {
+    public init() {}
+
+    public static func verify(_ hierarchyFile: LookinHierarchyFile?) -> NSError? {
         guard let hierarchyFile else {
             return lookinInnerError()
         }

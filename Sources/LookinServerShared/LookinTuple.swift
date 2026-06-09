@@ -32,25 +32,16 @@ public final class LookinTwoTuple {
     }
 }
 
-public final class LookinStringTwoTuple: NSObject, NSCopying {
+public struct LookinStringTwoTuple: Hashable {
     public var first: String?
     public var second: String?
 
     public static func tuple(withFirst firstString: String?, second secondString: String?) -> LookinStringTwoTuple {
-        let tuple = LookinStringTwoTuple()
-        tuple.first = firstString
-        tuple.second = secondString
-        return tuple
+        LookinStringTwoTuple(first: firstString, second: secondString)
     }
 
-    public override init() {
-        super.init()
-    }
-
-    public func copy(with zone: NSZone? = nil) -> Any {
-        let copy = LookinStringTwoTuple()
-        copy.first = first
-        copy.second = second
-        return copy
+    public init(first: String? = nil, second: String? = nil) {
+        self.first = first
+        self.second = second
     }
 }

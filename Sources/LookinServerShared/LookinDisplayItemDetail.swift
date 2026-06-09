@@ -1,6 +1,6 @@
 import Foundation
 
-public class LookinDisplayItemDetail: NSObject {
+public struct LookinDisplayItemDetail {
     public var displayItemOid: UInt = 0
     public var groupScreenshot: LookinImage?
     public var soloScreenshot: LookinImage?
@@ -15,8 +15,5 @@ public class LookinDisplayItemDetail: NSObject {
     public var subitems: [LookinDisplayItem]?
     public var failureCode: Int = 0
 
-    public override init() {
-        super.init()
-    }
-
+    public init() {}
 }

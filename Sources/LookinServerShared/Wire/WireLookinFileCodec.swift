@@ -52,7 +52,7 @@ public enum WireLookinFileCodec {
         }
         let jsonData = Data(data.dropFirst(magic.count))
         let payload = try LKWireCodecV2.decodeJSON(WireLookinDocumentPayload.self, from: jsonData)
-        let file = LookinHierarchyFile()
+        var file = LookinHierarchyFile()
         file.serverVersion = payload.serverVersion
         file.hierarchyInfo = WireHierarchyMapper.lookinHierarchy(from: payload.hierarchy)
         file.soloScreenshots = lookinScreenshotMap(from: payload.soloScreenshots)

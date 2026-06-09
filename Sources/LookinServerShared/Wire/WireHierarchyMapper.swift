@@ -87,12 +87,7 @@ public enum WireHierarchyMapper {
         let oid = item.layerObject?.oid ?? item.viewObject?.oid ?? 0
         let wireCustomInfo: WireCustomDisplayItemInfo?
         if let customInfo = item.customInfo {
-            let frameRect: Rect?
-            if let frameValue = customInfo.frameInWindow {
-                frameRect = Rect(LookinGeometryCoding.rect(from: frameValue))
-            } else {
-                frameRect = nil
-            }
+            let frameRect: Rect? = customInfo.frameInWindow.map { Rect($0) }
             wireCustomInfo = WireCustomDisplayItemInfo(
                 frameInWindow: frameRect,
                 title: customInfo.title,
@@ -143,10 +138,8 @@ public enum WireHierarchyMapper {
             item.hostViewControllerObject = WireHierarchyObjectMapping.lookinObject(from: hostVCRef)
         }
         if let wireInfo = wire.customInfo {
-            let info = LookinCustomDisplayItemInfo()
-            if let frame = wireInfo.frameInWindow {
-                info.frameInWindow = LookinGeometryCoding.nsValue(from: frame.cgRect)
-            }
+            var info = LookinCustomDisplayItemInfo()
+            info.frameInWindow = wireInfo.frameInWindow?.cgRect
             info.title = wireInfo.title
             info.subtitle = wireInfo.subtitle
             info.danceuiSource = wireInfo.danceuiSource
@@ -215,12 +208,7 @@ public enum WireHierarchyMapper {
         let oid = item.layerObject?.oid ?? item.viewObject?.oid ?? 0
         let wireCustomInfo: WireCustomDisplayItemInfo?
         if let customInfo = item.customInfo {
-            let frameRect: Rect?
-            if let frameValue = customInfo.frameInWindow {
-                frameRect = Rect(LookinGeometryCoding.rect(from: frameValue))
-            } else {
-                frameRect = nil
-            }
+            let frameRect: Rect? = customInfo.frameInWindow.map { Rect($0) }
             wireCustomInfo = WireCustomDisplayItemInfo(
                 frameInWindow: frameRect,
                 title: customInfo.title,
@@ -271,10 +259,8 @@ public enum WireHierarchyMapper {
             item.hostViewControllerObject = WireHierarchyObjectMapping.lookinObject(from: hostVCRef)
         }
         if let wireInfo = wire.customInfo {
-            let info = LookinCustomDisplayItemInfo()
-            if let frame = wireInfo.frameInWindow {
-                info.frameInWindow = LookinGeometryCoding.nsValue(from: frame.cgRect)
-            }
+            var info = LookinCustomDisplayItemInfo()
+            info.frameInWindow = wireInfo.frameInWindow?.cgRect
             info.title = wireInfo.title
             info.subtitle = wireInfo.subtitle
             info.danceuiSource = wireInfo.danceuiSource

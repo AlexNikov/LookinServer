@@ -35,7 +35,7 @@ public final class LKS_EventHandlerMaker: NSObject {
         }
 
         let handlers: [LookinEventHandler] = recognizers.lookin_map { _, recognizer in
-            let handler = LookinEventHandler()
+            var handler = LookinEventHandler()
             handler.handlerType = LookinEventHandlerType.gesture
             handler.eventName = NSStringFromClass(type(of: recognizer))
 
@@ -140,7 +140,7 @@ public final class LKS_EventHandlerMaker: NSObject {
             for target in allTargets {
                 guard let actions = control.actions(forTarget: target, forControlEvent: event) else { continue }
                 for action in actions {
-                    let tuple = LookinStringTwoTuple()
+                    var tuple = LookinStringTwoTuple()
                     tuple.first = LKS_Helper.description(of: target)
                     tuple.second = action
                     targetActions.append(tuple)
@@ -148,7 +148,7 @@ public final class LKS_EventHandlerMaker: NSObject {
             }
 
             if !targetActions.isEmpty {
-                let handler = LookinEventHandler()
+                var handler = LookinEventHandler()
                 handler.handlerType = LookinEventHandlerType.targetAction
                 handler.eventName = _name(from: event)
                 handler.targetActions = targetActions

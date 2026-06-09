@@ -97,7 +97,7 @@ final class LookinServerSharedTests: XCTestCase {
         hierarchy.collapsedClassList = ["UITableViewCell"]
         hierarchy.colorAlias = ["systemBlue": NSNumber(value: 0x007AFF)]
 
-        let attachment = LookinConnectionResponseAttachment()
+        var attachment = LookinConnectionResponseAttachment()
         attachment.data = hierarchy
         attachment.lookinServerVersion = lookinServerVersionInt32
 
@@ -110,8 +110,8 @@ final class LookinServerSharedTests: XCTestCase {
         )
         let jsonData = try LKWireCodecV2.encodeJSON(envelope)
         let decodedEnvelope = try LKWireCodecV2.decodeJSON(WireResponseEnvelope.self, from: jsonData)
-        let roundtrip = LookinConnectionResponseAttachment()
-        XCTAssertTrue(WireRequestResponseMapper.applyResponseEnvelope(decodedEnvelope, to: roundtrip))
+        var roundtrip = LookinConnectionResponseAttachment()
+        XCTAssertTrue(WireRequestResponseMapper.applyResponseEnvelope(decodedEnvelope, to: &roundtrip))
 
         let info = roundtrip.data as? LookinHierarchyInfo
         XCTAssertNotNil(info)
@@ -155,7 +155,7 @@ final class LookinServerSharedTests: XCTestCase {
         group.identifier = "group"
         group.attrSections = [section]
 
-        let detail = LookinDisplayItemDetail()
+        var detail = LookinDisplayItemDetail()
         detail.displayItemOid = 99
         detail.customDisplayTitle = "Title"
         detail.attributesGroupList = [group]
@@ -188,22 +188,22 @@ final class LookinServerSharedTests: XCTestCase {
             WireResponseEnvelope(requestType: 201, tag: 1, app: wire)
         )
         let envelope = try JSONDecoder().decode(WireResponseEnvelope.self, from: data)
-        let attachment = LookinConnectionResponseAttachment()
-        XCTAssertTrue(WireRequestResponseMapper.applyResponseEnvelope(try XCTUnwrap(envelope), to: attachment))
+        var attachment = LookinConnectionResponseAttachment()
+        XCTAssertTrue(WireRequestResponseMapper.applyResponseEnvelope(try XCTUnwrap(envelope), to: &attachment))
         let restored = attachment.data as? LookinAppInfo
         XCTAssertEqual(restored?.appName, "Demo")
         XCTAssertEqual(restored?.deviceType, .simulator)
     }
 
     func testWirePingResponseRoundTrip() throws {
-        let attachment = LookinConnectionResponseAttachment()
+        var attachment = LookinConnectionResponseAttachment()
         attachment.appIsInBackground = true
         let wire = try XCTUnwrap(
             WireRequestResponseMapper.responseEnvelope(from: attachment, requestType: 200, tag: 1)
         )
         XCTAssertEqual(wire.ping?.appIsInBackground, true)
-        let decoded = LookinConnectionResponseAttachment()
-        XCTAssertTrue(WireRequestResponseMapper.applyResponseEnvelope(wire, to: decoded))
+        var decoded = LookinConnectionResponseAttachment()
+        XCTAssertTrue(WireRequestResponseMapper.applyResponseEnvelope(wire, to: &decoded))
         XCTAssertTrue(decoded.appIsInBackground)
     }
 
@@ -251,7 +251,7 @@ final class LookinServerSharedTests: XCTestCase {
         app.screenHeight = 568
         info.appInfo = app
 
-        let file = LookinHierarchyFile()
+        var file = LookinHierarchyFile()
         file.serverVersion = info.serverVersion
         file.hierarchyInfo = info
         file.soloScreenshots = [NSNumber(value: 1): Data([0x01, 0x02])]
@@ -513,9 +513,9 @@ final class LookinServerSharedTests: XCTestCase {
     }
 
     func testLookinRequestTypeWireEnvelopeRoundTrips() throws {
-        let asyncTask = LookinStaticAsyncUpdateTask()
+        var asyncTask = LookinStaticAsyncUpdateTask()
         asyncTask.oid = 9
-        let detailPackage = LookinStaticAsyncUpdateTasksPackage()
+        var detailPackage = LookinStaticAsyncUpdateTasksPackage()
         detailPackage.tasks = [asyncTask]
 
         var inbuilt = LookinAttributeModification()

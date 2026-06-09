@@ -59,10 +59,14 @@ public final class LKS_CustomDisplayItemsMaker: NSObject {
         newItem.isHidden = false
         newItem.alpha = 1
 
-        let customInfo = LookinCustomDisplayItemInfo()
+        var customInfo = LookinCustomDisplayItemInfo()
         customInfo.title = title
         customInfo.subtitle = dict["subtitle"] as? String
-        customInfo.frameInWindow = dict["frameInWindow"] as? NSValue
+        if let frameValue = dict["frameInWindow"] as? NSValue {
+            customInfo.frameInWindow = frameValue.cgRectValue
+        } else if let rect = dict["frameInWindow"] as? CGRect {
+            customInfo.frameInWindow = rect
+        }
         customInfo.danceuiSource = dict["lookin_source"] as? String
         newItem.customInfo = customInfo
 

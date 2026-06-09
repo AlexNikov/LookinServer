@@ -48,7 +48,7 @@ public final class LKS_ExportManager: NSObject {
             guard let self else { return }
 
             let info = LookinHierarchyInfo.exportedInfo()
-            let file = LookinHierarchyFile()
+            var file = LookinHierarchyFile()
             file.serverVersion = info.serverVersion
             file.hierarchyInfo = info
 

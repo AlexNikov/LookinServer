@@ -227,7 +227,7 @@ public enum WireRequestResponseMapper {
 
     public static func applyResponseEnvelope(
         _ envelope: WireResponseEnvelope,
-        to attachment: LookinConnectionResponseAttachment
+        to attachment: inout LookinConnectionResponseAttachment
     ) -> Bool {
         if let error = envelope.error {
             attachment.error = NSError(

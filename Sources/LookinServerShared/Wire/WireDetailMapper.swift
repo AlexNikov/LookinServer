@@ -30,7 +30,7 @@ public enum WireDetailMapper {
     }
 
     public static func lookinDetail(from payload: WireDisplayItemDetailPayload) -> LookinDisplayItemDetail {
-        let detail = LookinDisplayItemDetail()
+        var detail = LookinDisplayItemDetail()
         detail.displayItemOid = payload.displayItemOid
         if let frame = payload.frame {
             #if canImport(UIKit)

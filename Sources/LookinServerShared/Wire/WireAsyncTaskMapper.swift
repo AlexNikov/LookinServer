@@ -13,7 +13,7 @@ public enum WireAsyncTaskMapper {
     }
 
     public static func lookinTask(from wire: WireStaticAsyncUpdateTask) -> LookinStaticAsyncUpdateTask {
-        let task = LookinStaticAsyncUpdateTask()
+        var task = LookinStaticAsyncUpdateTask()
         task.oid = wire.oid
         task.taskType = LookinStaticAsyncUpdateTaskType(rawValue: wire.taskType) ?? .noScreenshot
         task.attrRequest = LookinDetailUpdateTaskAttrRequest(rawValue: wire.attrRequest) ?? .automatic
@@ -30,7 +30,7 @@ public enum WireAsyncTaskMapper {
     }
 
     public static func lookinPackage(from wire: WireStaticAsyncUpdateTasksPackage) -> LookinStaticAsyncUpdateTasksPackage {
-        let package = LookinStaticAsyncUpdateTasksPackage()
+        var package = LookinStaticAsyncUpdateTasksPackage()
         package.tasks = wire.tasks?.map { lookinTask(from: $0) }
         return package
     }

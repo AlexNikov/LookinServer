@@ -13,7 +13,7 @@ public enum LookinDetailUpdateTaskAttrRequest: Int {
     case notNeed = 2
 }
 
-public class LookinStaticAsyncUpdateTask: NSObject {
+public struct LookinStaticAsyncUpdateTask: Hashable {
     public var oid: UInt = 0
     public var taskType: LookinStaticAsyncUpdateTaskType = .noScreenshot
     public var attrRequest: LookinDetailUpdateTaskAttrRequest = .automatic
@@ -22,36 +22,27 @@ public class LookinStaticAsyncUpdateTask: NSObject {
     public var clientReadableVersion: String?
     public var frameSize: CGSize = .zero
 
-    public override init() {
-        super.init()
-    }
+    public init() {}
 
-    public override var hash: Int {
-        var hasher = Hasher()
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(oid)
         hasher.combine(taskType.rawValue)
         hasher.combine(attrRequest.rawValue)
         hasher.combine(needBasisVisualInfo)
         hasher.combine(needSubitems)
-        return hasher.finalize()
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        guard let other = object as? LookinStaticAsyncUpdateTask else { return false }
-        if self === other { return true }
-        return oid == other.oid
-            && taskType == other.taskType
-            && attrRequest == other.attrRequest
-            && needBasisVisualInfo == other.needBasisVisualInfo
-            && needSubitems == other.needSubitems
+    public static func == (lhs: LookinStaticAsyncUpdateTask, rhs: LookinStaticAsyncUpdateTask) -> Bool {
+        lhs.oid == rhs.oid
+            && lhs.taskType == rhs.taskType
+            && lhs.attrRequest == rhs.attrRequest
+            && lhs.needBasisVisualInfo == rhs.needBasisVisualInfo
+            && lhs.needSubitems == rhs.needSubitems
     }
 }
 
-public class LookinStaticAsyncUpdateTasksPackage: NSObject {
+public struct LookinStaticAsyncUpdateTasksPackage {
     public var tasks: [LookinStaticAsyncUpdateTask]?
 
-    public override init() {
-        super.init()
-    }
-
+    public init() {}
 }
