@@ -3,10 +3,8 @@
 import Foundation
 import UIKit
 
-@objc(LKS_AttrModificationPatchHandler)
 public final class LKS_AttrModificationPatchHandler: NSObject {
 
-    @objc(handleLayerOids:lowImageQuality:block:)
     public static func handleLayerOids(
         _ oids: [NSNumber],
         lowImageQuality: Bool,
@@ -23,7 +21,7 @@ public final class LKS_AttrModificationPatchHandler: NSObject {
 
         for (idx, obj) in oids.enumerated() {
             let oid = obj.uintValue
-            let detail = LookinDisplayItemDetail()
+            var detail = LookinDisplayItemDetail()
             detail.displayItemOid = oid
 
             guard let layer = NSObject.lks_object(withOid: oid) as? CALayer else {

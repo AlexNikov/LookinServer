@@ -2,7 +2,6 @@
 
 import Foundation
 
-@objc(LKS_Helper)
 public final class LKS_Helper: NSObject {
 
     private static let resourceBundle: Bundle = {
@@ -14,14 +13,12 @@ public final class LKS_Helper: NSObject {
         return Bundle(for: LKS_Helper.self)
     }()
 
-    @objc(descriptionOfObject:)
     public static func description(of object: Any?) -> String {
         guard let object else { return "nil" }
         let className = NSStringFromClass(type(of: object as AnyObject))
         return "(\(className) *)"
     }
 
-    @objc(bundle)
     public static func bundle() -> Bundle {
         resourceBundle
     }

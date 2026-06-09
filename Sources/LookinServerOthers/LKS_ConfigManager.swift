@@ -3,10 +3,8 @@
 import Foundation
 import UIKit
 
-@objc(LKSConfigManager)
 public final class LKSConfigManager: NSObject {
 
-    @objc(collapsedClassList)
     public static func collapsedClassList() -> [String]? {
         if let result = queryCollapsedClassList(with: NSObject.self, selectorName: "lookin_collapsedClassList") {
             return result
@@ -27,7 +25,6 @@ public final class LKSConfigManager: NSObject {
         return classList.lookin_filter { $0 is String }.compactMap { $0 as? String }
     }
 
-    @objc(colorAlias)
     public static func colorAlias() -> NSDictionary? {
         if let result = queryColorAlias(with: NSObject.self, selectorName: "lookin_colorAlias") {
             return result
@@ -63,7 +60,6 @@ public final class LKSConfigManager: NSObject {
         return validDictionary.count > 0 ? validDictionary : nil
     }
 
-    @objc(shouldCaptureScreenshotOfLayer:)
     public static func shouldCaptureScreenshot(of layer: CALayer?) -> Bool {
         guard let layer else { return true }
         if !shouldCaptureImage(of: layer) {

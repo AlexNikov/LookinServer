@@ -3,7 +3,6 @@
 import Foundation
 import UIKit
 
-@objc(LKS_AttrGroupsMaker)
 public final class LKS_AttrGroupsMaker: NSObject {
 
     public static func attrGroups(for layer: CALayer?) -> [LKAttributesGroup]? {

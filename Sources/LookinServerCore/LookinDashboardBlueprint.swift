@@ -4,7 +4,6 @@ import Foundation
 import LookinServerShared
 #endif
 
-@objc(LookinDashboardBlueprint)
 public final class LookinDashboardBlueprint: NSObject {
 
     private struct AttrInfo {
@@ -904,20 +903,16 @@ public final class LookinDashboardBlueprint: NSObject {
         return dict
     }()
 
-    @objc(groupIDs)
     public class func groupIDs() -> [LookinAttrGroupIdentifier] { allGroupIDs }
 
-    @objc(sectionIDsForGroupID:)
     public class func sectionIDs(forGroupID groupID: LookinAttrGroupIdentifier) -> [LookinAttrSectionIdentifier] {
         sectionsByGroup[groupID] ?? []
     }
 
-    @objc(attrIDsForSectionID:)
     public class func attrIDs(forSectionID sectionID: LookinAttrSectionIdentifier) -> [LookinAttrIdentifier] {
         attrsBySection[sectionID] ?? []
     }
 
-    @objc(getHostGroupID:sectionID:fromAttrID:)
     public class func getHostGroupID(
         _ groupID: AutoreleasingUnsafeMutablePointer<NSString?>?,
         sectionID: AutoreleasingUnsafeMutablePointer<NSString?>?,
@@ -938,14 +933,12 @@ public final class LookinDashboardBlueprint: NSObject {
         if let sectionID, let targetSecID { sectionID.pointee = targetSecID as NSString }
     }
 
-    @objc(groupTitleWithGroupID:)
     public class func groupTitle(withGroupID groupID: LookinAttrGroupIdentifier) -> String {
         let title = groupTitles[groupID]
         assert(title?.isEmpty == false)
         return title ?? ""
     }
 
-    @objc(sectionTitleWithSectionID:)
     public class func sectionTitle(withSectionID secID: LookinAttrSectionIdentifier) -> String? {
         sectionTitles[secID]
     }
@@ -956,41 +949,34 @@ public final class LookinDashboardBlueprint: NSObject {
         info(forAttrID: attrID)?.typeIfObj ?? .none
     }
 
-    @objc(classNameWithAttrID:)
     public class func className(withAttrID attrID: LookinAttrIdentifier) -> String? {
         let className = info(forAttrID: attrID)?.className
         assert(className?.isEmpty == false)
         return className
     }
 
-    @objc(isUIViewPropertyWithAttrID:)
     public class func isUIViewProperty(withAttrID attrID: LookinAttrIdentifier) -> Bool {
         className(withAttrID: attrID) != "CALayer"
     }
 
-    @objc(enumListNameWithAttrID:)
     public class func enumListName(withAttrID attrID: LookinAttrIdentifier) -> String? {
         info(forAttrID: attrID)?.enumList
     }
 
-    @objc(needPatchAfterModificationWithAttrID:)
     public class func needPatchAfterModification(withAttrID attrID: LookinAttrIdentifier) -> Bool {
         info(forAttrID: attrID)?.patch ?? false
     }
 
-    @objc(fullTitleWithAttrID:)
     public class func fullTitle(withAttrID attrID: LookinAttrIdentifier) -> String? {
         info(forAttrID: attrID)?.fullTitle
     }
 
-    @objc(briefTitleWithAttrID:)
     public class func briefTitle(withAttrID attrID: LookinAttrIdentifier) -> String? {
         let info = info(forAttrID: attrID)
         if let brief = info?.briefTitle { return brief }
         return info?.fullTitle
     }
 
-    @objc(getterWithAttrID:)
     public class func getter(withAttrID attrID: LookinAttrIdentifier) -> Selector? {
         guard let info = info(forAttrID: attrID) else { return nil }
         if let getter = info.getter {
@@ -1000,7 +986,6 @@ public final class LookinDashboardBlueprint: NSObject {
         return NSSelectorFromString(fullTitle.prefix(1).lowercased() + fullTitle.dropFirst())
     }
 
-    @objc(setterWithAttrID:)
     public class func setter(withAttrID attrID: LookinAttrIdentifier) -> Selector? {
         guard let info = info(forAttrID: attrID) else { return nil }
         if let setterString = info.setterString {
@@ -1011,12 +996,10 @@ public final class LookinDashboardBlueprint: NSObject {
         return NSSelectorFromString("set" + fullTitle.prefix(1).uppercased() + fullTitle.dropFirst() + ":")
     }
 
-    @objc(hideIfNilWithAttrID:)
     public class func hideIfNil(withAttrID attrID: LookinAttrIdentifier) -> Bool {
         info(forAttrID: attrID)?.hideIfNil ?? false
     }
 
-    @objc(minAvailableOSVersionWithAttrID:)
     public class func minAvailableOSVersion(withAttrID attrID: LookinAttrIdentifier) -> Int {
         info(forAttrID: attrID)?.osVersion ?? 0
     }

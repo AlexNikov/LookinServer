@@ -5,10 +5,8 @@ import UIKit
 
 private typealias LKMultiplatformAdapter = LKS_MultiplatformAdapter
 
-@objc(LKS_HierarchyDisplayItemsMaker)
 public final class LKS_HierarchyDisplayItemsMaker: NSObject {
 
-    @objc(itemsWithScreenshots:attrList:lowImageQuality:readCustomInfo:saveCustomSetter:)
     public static func items(
         withScreenshots hasScreenshots: Bool,
         attrList hasAttrList: Bool,
@@ -37,7 +35,6 @@ public final class LKS_HierarchyDisplayItemsMaker: NSObject {
         return result
     }
 
-    @objc(subitemsOfLayer:)
     public static func subitems(of layer: CALayer) -> [LKDisplayItem] {
         guard let sublayers = layer.sublayers, !sublayers.isEmpty else { return [] }
 

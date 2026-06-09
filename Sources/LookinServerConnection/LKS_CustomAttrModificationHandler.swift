@@ -3,7 +3,6 @@
 import Foundation
 import UIKit
 
-@objc(LKS_CustomAttrModificationHandler)
 public final class LKS_CustomAttrModificationHandler: NSObject {
 
     public static func handleModification(_ modification: LookinCustomAttrModification?) -> Bool {

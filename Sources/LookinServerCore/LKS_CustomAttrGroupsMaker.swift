@@ -3,7 +3,6 @@
 import Foundation
 import UIKit
 
-@objc(LKS_CustomAttrGroupsMaker)
 public final class LKS_CustomAttrGroupsMaker: NSObject {
     private var sectionAndAttrs: [String: [LKAttribute]] = [:]
     private var resolvedCustomDisplayTitle: String?
@@ -11,7 +10,6 @@ public final class LKS_CustomAttrGroupsMaker: NSObject {
     private var resolvedGroups: [LKAttributesGroup]?
     private weak var layer: CALayer?
 
-    @objc(initWithLayer:)
     public init(layer: CALayer) {
         self.layer = layer
         super.init()

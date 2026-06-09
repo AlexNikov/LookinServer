@@ -2,19 +2,16 @@
 
 import UIKit
 
-@objc(LKS_MultiplatformAdapter)
 public final class LKS_MultiplatformAdapter: NSObject {
 
     private static var _isiPad: Bool = {
         UIDevice.current.model.hasPrefix("iPad")
     }()
 
-    @objc(isiPad)
     public static func isiPad() -> Bool {
         _isiPad
     }
 
-    @objc(mainScreenBounds)
     public static func mainScreenBounds() -> CGRect {
         #if os(visionOS)
         return getFirstActiveWindowScene()?.coordinateSpace.bounds ?? .zero
@@ -23,7 +20,6 @@ public final class LKS_MultiplatformAdapter: NSObject {
         #endif
     }
 
-    @objc(mainScreenScale)
     public static func mainScreenScale() -> CGFloat {
         #if os(visionOS)
         return 2
@@ -43,7 +39,6 @@ public final class LKS_MultiplatformAdapter: NSObject {
     }
     #endif
 
-    @objc(keyWindow)
     public static func keyWindow() -> UIWindow? {
         #if os(visionOS)
         return getFirstActiveWindowScene()?.keyWindow
@@ -52,7 +47,6 @@ public final class LKS_MultiplatformAdapter: NSObject {
         #endif
     }
 
-    @objc(allWindows)
     public static func allWindows() -> [UIWindow] {
         #if os(visionOS)
         var windows: [UIWindow] = []
