@@ -3,12 +3,13 @@
 import Foundation
 import UIKit
 
-public final class LKS_RequestHandler: NSObject {
+@MainActor
+public actor LKS_RequestHandler {
 
     private let validRequestTypes: Set<UInt32>
-    private var activeDetailHandlers: [ObjectIdentifier: LKS_HierarchyDetailsHandler] = [:]
+    private var activeDetailTasks: [UUID: Task<Void, Never>] = [:]
 
-    public override init() {
+    public init() {
         validRequestTypes = Set([
             UInt32(LookinRequestTypePing),
             UInt32(LookinRequestTypeApp),
@@ -25,14 +26,13 @@ public final class LKS_RequestHandler: NSObject {
             UInt32(LookinRequestTypeModifyRecognizerEnable),
             UInt32(LookinPush_CanceHierarchyDetails),
         ])
-        super.init()
     }
 
     public func canHandleRequestType(_ requestType: UInt32) -> Bool {
         validRequestTypes.contains(requestType)
     }
 
-    public func handleRequestType(_ requestType: UInt32, tag: UInt32, object: Any?) {
+    public func handleRequestType(_ requestType: UInt32, tag: UInt32, object: Any?) async {
         switch requestType {
         case UInt32(LookinRequestTypePing):
             var responseAttachment = LKConnectionResponseAttachment()
@@ -56,10 +56,8 @@ public final class LKS_RequestHandler: NSObject {
 
         case UInt32(LookinRequestTypeHierarchy):
             var clientVersion: String?
-            if let params = object as? [String: Any] {
-                if let version = params["clientVersion"] as? String {
-                    clientVersion = version
-                }
+            if let params = object as? [String: Any], let version = params["clientVersion"] as? String {
+                clientVersion = version
             }
             var responseAttachment = LKConnectionResponseAttachment()
             responseAttachment.data = LKHierarchyInfo.staticInfo(withLookinVersion: clientVersion)
@@ -74,21 +72,19 @@ public final class LKS_RequestHandler: NSObject {
             LookinDiagLog.log(
                 "Peertalk inbuilt req tag=\(tag) targetOid=\(modification.targetOid) attr=\(modification.attrIdentifier ?? "?")"
             )
-            LKS_InbuiltAttrModificationHandler.handleModification(modification) { data, error in
+            do {
+                let detail = try await LKS_InbuiltAttrModificationHandler.handleModification(modification)
+                LookinDiagLog.log(
+                    "Peertalk inbuilt resp OK tag=\(tag) detailOid=\(detail.displayItemOid)"
+                )
                 var attachment = LKConnectionResponseAttachment()
-                if let error {
-                    LookinDiagLog.log(
-                        "Peertalk inbuilt resp ERROR tag=\(tag) code=\((error as NSError).code) \(error.localizedDescription)"
-                    )
-                    attachment.error = error as NSError
-                } else {
-                    let detail = data as? LookinDisplayItemDetail
-                    LookinDiagLog.log(
-                        "Peertalk inbuilt resp OK tag=\(tag) hasDetail=\(detail != nil) detailOid=\(detail?.displayItemOid ?? 0)"
-                    )
-                    attachment.data = data
-                }
+                attachment.data = detail
                 LKS_ConnectionManager.sharedInstance.respond(attachment, requestType: requestType, tag: tag)
+            } catch {
+                LookinDiagLog.log(
+                    "Peertalk inbuilt resp ERROR tag=\(tag) code=\((error as NSError).code) \(error.localizedDescription)"
+                )
+                submitResponseWithError(error, requestType: requestType, tag: tag)
             }
 
         case UInt32(LookinRequestTypeCustomAttrModification):
@@ -107,13 +103,11 @@ public final class LKS_RequestHandler: NSObject {
 
         case UInt32(LookinRequestTypeAttrModificationPatch):
             guard let rawTasks = object as? [NSObject], !rawTasks.isEmpty else { return }
-            let tasks = rawTasks.map {
-                unsafeDowncast($0, to: LookinStaticAsyncUpdateTask.self)
-            }
+            let tasks = rawTasks.map { unsafeDowncast($0, to: LookinStaticAsyncUpdateTask.self) }
             let dataTotalCount = tasks.count
-            LKS_InbuiltAttrModificationHandler.handlePatchWithTasks(tasks) { data in
+            for await detail in LKS_ConnectionRuntimeBridge.handlePatch(with: tasks) {
                 var attrAttachment = LKConnectionResponseAttachment()
-                attrAttachment.data = data
+                attrAttachment.data = detail
                 attrAttachment.dataTotalCount = UInt(dataTotalCount)
                 attrAttachment.currentDataCount = 1
                 LKS_ConnectionManager.sharedInstance.respond(
@@ -124,46 +118,7 @@ public final class LKS_RequestHandler: NSObject {
             }
 
         case UInt32(LookinRequestTypeHierarchyDetails):
-            let packages = Self.taskPackages(from: object)
-            let responsesDataTotalCount = (packages as NSArray?)?.lookin_reduceInteger({ accumulator, _, package in
-                guard let package = package as? LookinStaticAsyncUpdateTasksPackage else { return accumulator }
-                return accumulator + (package.tasks?.count ?? 0)
-            }, initialAccumlator: 0) ?? 0
-
-            if packages == nil {
-                submitResponseWithError(LookinConnectionErrors.inner, requestType: requestType, tag: tag)
-                return
-            }
-
-            if responsesDataTotalCount == 0 {
-                var attachment = LKConnectionResponseAttachment()
-                attachment.data = NSArray()
-                attachment.dataTotalCount = 0
-                attachment.currentDataCount = 0
-                LKS_ConnectionManager.sharedInstance.respond(
-                    attachment,
-                    requestType: UInt32(LookinRequestTypeHierarchyDetails),
-                    tag: tag
-                )
-                return
-            }
-
-            let handler = LKS_HierarchyDetailsHandler()
-            activeDetailHandlers[ObjectIdentifier(handler)] = handler
-
-            handler.start(with: packages ?? [], block: { details in
-                var attachment = LKConnectionResponseAttachment()
-                attachment.data = details
-                attachment.dataTotalCount = UInt(responsesDataTotalCount)
-                attachment.currentDataCount = UInt(details.count)
-                LKS_ConnectionManager.sharedInstance.respond(
-                    attachment,
-                    requestType: UInt32(LookinRequestTypeHierarchyDetails),
-                    tag: tag
-                )
-            }, finishedBlock: { [weak self] in
-                self?.activeDetailHandlers.removeValue(forKey: ObjectIdentifier(handler))
-            })
+            await handleHierarchyDetails(object: object, tag: tag)
 
         case UInt32(LookinRequestTypeFetchObject):
             let oid = (object as? NSNumber)?.uintValue ?? 0
@@ -250,10 +205,10 @@ public final class LKS_RequestHandler: NSObject {
             }
 
         case UInt32(LookinPush_CanceHierarchyDetails):
-            for handler in activeDetailHandlers.values {
-                handler.cancel()
+            for task in activeDetailTasks.values {
+                task.cancel()
             }
-            activeDetailHandlers.removeAll()
+            activeDetailTasks.removeAll()
 
         case UInt32(LookinRequestTypeFetchImageViewImage):
             guard let oidNumber = object as? NSNumber else {
@@ -287,16 +242,62 @@ public final class LKS_RequestHandler: NSObject {
                 return
             }
             recognizer.isEnabled = shouldBeEnabled
-            DispatchQueue.main.asyncAfter(deadline: .now()) { [weak self] in
-                self?.submitResponseWithData(NSNumber(value: recognizer.isEnabled), requestType: requestType, tag: tag)
-            }
+            await Task.yield()
+            submitResponseWithData(NSNumber(value: recognizer.isEnabled), requestType: requestType, tag: tag)
 
         default:
             break
         }
     }
 
-    // MARK: - Private
+    public func handleHierarchyDetails(object: Any?, tag: UInt32) async {
+        let packages = Self.taskPackages(from: object)
+        let responsesDataTotalCount = (packages as NSArray?)?.lookin_reduceInteger({ accumulator, _, package in
+            guard let package = package as? LookinStaticAsyncUpdateTasksPackage else { return accumulator }
+            return accumulator + (package.tasks?.count ?? 0)
+        }, initialAccumlator: 0) ?? 0
+
+        guard let packages else {
+            submitResponseWithError(LookinConnectionErrors.inner, requestType: UInt32(LookinRequestTypeHierarchyDetails), tag: tag)
+            return
+        }
+
+        if responsesDataTotalCount == 0 {
+            var attachment = LKConnectionResponseAttachment()
+            attachment.data = NSArray()
+            attachment.dataTotalCount = 0
+            attachment.currentDataCount = 0
+            LKS_ConnectionManager.sharedInstance.respond(
+                attachment,
+                requestType: UInt32(LookinRequestTypeHierarchyDetails),
+                tag: tag
+            )
+            return
+        }
+
+        let taskID = UUID()
+        let detailTask = Task { @MainActor in
+            let handler = LKS_HierarchyDetailsHandler()
+            for await details in handler.generateDetails(for: packages) {
+                if Task.isCancelled { break }
+                var attachment = LKConnectionResponseAttachment()
+                attachment.data = details
+                attachment.dataTotalCount = UInt(responsesDataTotalCount)
+                attachment.currentDataCount = UInt(details.count)
+                LKS_ConnectionManager.sharedInstance.respond(
+                    attachment,
+                    requestType: UInt32(LookinRequestTypeHierarchyDetails),
+                    tag: tag
+                )
+            }
+            await self.finishDetailTask(taskID)
+        }
+        activeDetailTasks[taskID] = detailTask
+    }
+
+    private func finishDetailTask(_ id: UUID) {
+        activeDetailTasks.removeValue(forKey: id)
+    }
 
     private static func taskPackages(from object: Any?) -> [LookinStaticAsyncUpdateTasksPackage]? {
         if let packages = object as? [LookinStaticAsyncUpdateTasksPackage] {
@@ -330,7 +331,7 @@ public final class LKS_RequestHandler: NSObject {
     }
 
     private func lksLocalized(_ key: String) -> String {
-        NSLocalizedString(key, tableName: nil, bundle: Bundle(for: LKS_RequestHandler.self), comment: "")
+        NSLocalizedString(key, tableName: nil, bundle: LKS_Helper.bundle(), comment: "")
     }
 }
 

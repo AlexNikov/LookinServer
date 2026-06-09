@@ -90,13 +90,13 @@ extension LKS_ConnectionManager {
         _sendRawPayload(payload, frameOfType: LookinWireFormat.frameTypeScreenshot, tag: tag)
     }
 
-    func handleWireJSONRequest(_ envelope: WireRequestEnvelope, tag: UInt32) {
+    func handleWireJSONRequest(_ envelope: WireRequestEnvelope, tag: UInt32) async {
         guard LookinWireFormat.validateWireVersion(envelope.wireVersion, context: "request") else {
             return
         }
         guard let object = WireRequestResponseMapper.requestObject(from: envelope) else {
             if envelope.requestType == UInt32(LookinRequestTypePing) {
-                requestHandler.handleRequestType(envelope.requestType, tag: tag, object: nil)
+                await requestHandler.handleRequestType(envelope.requestType, tag: tag, object: nil)
             } else {
                 LookinDiagLog.log(
                     "wire request decode FAIL type=\(envelope.requestType) tag=\(tag) inbuilt=\(envelope.inbuiltModification != nil)"
@@ -108,12 +108,12 @@ extension LKS_ConnectionManager {
             }
             return
         }
-        requestHandler.handleRequestType(envelope.requestType, tag: tag, object: object)
+        await requestHandler.handleRequestType(envelope.requestType, tag: tag, object: object)
     }
 
-    func handleWireJSONCommand(_ data: Data, tag: UInt32) {
+    func handleWireJSONCommand(_ data: Data, tag: UInt32) async {
         if let envelope = try? LKWireCodecV2.decodeJSON(WireRequestEnvelope.self, from: data) {
-            handleWireJSONRequest(envelope, tag: tag)
+            await handleWireJSONRequest(envelope, tag: tag)
             return
         }
         guard let command = try? LKWireCodecV2.decodeJSON(WireCommand.self, from: data),

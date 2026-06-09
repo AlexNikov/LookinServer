@@ -309,14 +309,21 @@ public final class LKS_ConnectionManager: NSObject {
             NSLog("LookinServer - didReceive frame type:%u tag:%u empty payload", frame.type, frame.tag)
             return
         }
+        if frame.type != LookinWireFormat.frameTypeJSON,
+           frame.type != LookinWireFormat.frameTypeScreenshot,
+           !(await requestHandler.canHandleRequestType(frame.type)) {
+            NSLog("LookinServer - reject unknown frame type:%u tag:%u", frame.type, frame.tag)
+            await peerChannel?.close()
+            return
+        }
         let data = frame.payload
         if frame.type == LookinWireFormat.frameTypeJSON {
-            handleWireJSONCommand(data, tag: frame.tag)
+            await handleWireJSONCommand(data, tag: frame.tag)
             return
         }
         do {
             let envelope = try LKWireCodecV2.decodeJSON(WireRequestEnvelope.self, from: data)
-            handleWireJSONRequest(envelope, tag: frame.tag)
+            await handleWireJSONRequest(envelope, tag: frame.tag)
             return
         } catch {
             if data.first == UInt8(ascii: "{") {
@@ -335,7 +342,7 @@ public final class LKS_ConnectionManager: NSObject {
             guard LookinWireFormat.validateWireVersion(push.wireVersion, context: "push") else {
                 return
             }
-            requestHandler.handleRequestType(push.pushType, tag: frame.tag, object: nil)
+            await requestHandler.handleRequestType(push.pushType, tag: frame.tag, object: nil)
             return
         }
         NSLog(

@@ -36,7 +36,7 @@ public final class LKS_HierarchyDetailsHandler: NSObject {
                 for package in packages {
                     for task in package.tasks ?? [] {
                         await Task.yield()
-                        guard !self.taskPackages.isEmpty else {
+                        if Task.isCancelled || self.taskPackages.isEmpty {
                             continuation.finish()
                             return
                         }
