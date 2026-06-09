@@ -6,7 +6,6 @@ import UIKit
 public typealias LKS_HierarchyDetailsHandler_ProgressBlock = ([LookinDisplayItemDetail]) -> Void
 public typealias LKS_HierarchyDetailsHandler_FinishBlock = () -> Void
 
-@objc(LKS_HierarchyDetailsHandler)
 public final class LKS_HierarchyDetailsHandler: NSObject {
 
     private var taskPackages: [LookinStaticAsyncUpdateTasksPackage] = []
@@ -24,7 +23,33 @@ public final class LKS_HierarchyDetailsHandler: NSObject {
         )
     }
 
-    @objc(startWithPackages:block:finishedBlock:)
+    @MainActor
+    func generateDetails(for packages: [LookinStaticAsyncUpdateTasksPackage]) -> AsyncStream<[LookinDisplayItemDetail]> {
+        taskPackages = packages
+        return AsyncStream { continuation in
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    continuation.finish()
+                    return
+                }
+                UIView.lks_rebuildGlobalInvolvedRawConstraints()
+                for package in packages {
+                    for task in package.tasks ?? [] {
+                        await Task.yield()
+                        guard !self.taskPackages.isEmpty else {
+                            continuation.finish()
+                            return
+                        }
+                        let detail = self._makeDetail(for: task)
+                        continuation.yield([detail])
+                    }
+                }
+                self.taskPackages.removeAll()
+                continuation.finish()
+            }
+        }
+    }
+
     public func start(
         with packages: [LookinStaticAsyncUpdateTasksPackage],
         block progressBlock: @escaping LKS_HierarchyDetailsHandler_ProgressBlock,
@@ -38,14 +63,17 @@ public final class LKS_HierarchyDetailsHandler: NSObject {
             finishBlock()
             return
         }
-        taskPackages = packages
         self.progressBlock = progressBlock
         self.finishBlock = finishBlock
 
-        runOnMainAsync { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
-            UIView.lks_rebuildGlobalInvolvedRawConstraints()
-            self._dequeueAndHandlePackage()
+            for await details in self.generateDetails(for: packages) {
+                self.progressBlock?(details)
+            }
+            self.finishBlock?()
+            self.finishBlock = nil
+            self.progressBlock = nil
         }
     }
 
@@ -53,49 +81,8 @@ public final class LKS_HierarchyDetailsHandler: NSObject {
         taskPackages.removeAll()
     }
 
-    private func _dequeueAndHandlePackage() {
-        runOnMainAsync { [weak self] in
-            guard let self else { return }
-            guard let package = self.taskPackages.first else {
-                self.finishBlock?()
-                self.finishBlock = nil
-                self.progressBlock = nil
-                return
-            }
-
-            let tasks = package.tasks ?? []
-            self.taskPackages.removeFirst()
-
-            guard !tasks.isEmpty else {
-                self._dequeueAndHandlePackage()
-                return
-            }
-
-            // Process tasks one-at-a-time so each DispatchQueue.main.async yields allow
-            // AllAttrGroups and other lightweight requests to be handled between tasks.
-            self._processTasksOneByOne(tasks)
-        }
-    }
-
-    private func _processTasksOneByOne(_ tasks: [LookinStaticAsyncUpdateTask]) {
-        guard !tasks.isEmpty else {
-            _dequeueAndHandlePackage()
-            return
-        }
-        runOnMainAsync { [weak self] in
-            guard let self else { return }
-            let detail = self._makeDetail(for: tasks[0])
-            self.progressBlock?([detail])
-            self._processTasksOneByOne(Array(tasks.dropFirst()))
-        }
-    }
-
-    private func runOnMainAsync(_ work: @escaping () -> Void) {
-        DispatchQueue.main.async(execute: work)
-    }
-
     private func _makeDetail(for task: LookinStaticAsyncUpdateTask) -> LookinDisplayItemDetail {
-        let itemDetail = LookinDisplayItemDetail()
+        var itemDetail = LookinDisplayItemDetail()
         itemDetail.displayItemOid = task.oid
 
         guard let object = NSObject.lks_object(withOid: task.oid) as? CALayer else {

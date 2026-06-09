@@ -3,7 +3,7 @@
 import Foundation
 import UIKit
 
-@objc(LKS_ConnectionRuntimeBridge)
+@MainActor
 public final class LKS_ConnectionRuntimeBridge: NSObject {
 
     private static let setHiddenSelector = NSSelectorFromString("setHidden:")
@@ -74,7 +74,7 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
                 return
             }
 
-            let detail = LookinDisplayItemDetail()
+            var detail = LookinDisplayItemDetail()
             detail.displayItemOid = Self.preferredDisplayItemOid(for: receiver, fallback: modification.targetOid)
             detail.frameValue = NSValue(cgRect: layer.frame)
             detail.boundsValue = NSValue(cgRect: layer.bounds)
@@ -95,11 +95,7 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
             )
             completion(detail, invokeError)
         }
-        if Thread.isMainThread {
-            work()
-        } else {
-            DispatchQueue.main.async(execute: work)
-        }
+        work()
     }
 
     /// Hidden/Opacity: skip attr-group rebuild; assign properties directly (no invokeSetter — avoids UIView layout hangs).
@@ -163,7 +159,7 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         receiver: NSObject
     ) -> LookinDisplayItemDetail? {
         guard let layer = layer(for: receiver) else { return nil }
-        let detail = LookinDisplayItemDetail()
+        var detail = LookinDisplayItemDetail()
         detail.displayItemOid = preferredDisplayItemOid(for: receiver, fallback: modification.targetOid)
         fillVisibilityFields(in: detail, layer: layer)
         return detail
@@ -217,10 +213,9 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         return lookinInnerError()
     }
 
-    @objc(handlePatchWithTasks:block:)
     public static func handlePatch(with tasks: [LookinStaticAsyncUpdateTask], block: @escaping (LookinDisplayItemDetail) -> Void) {
         for task in tasks {
-            let itemDetail = LookinDisplayItemDetail()
+            var itemDetail = LookinDisplayItemDetail()
             itemDetail.displayItemOid = task.oid
 
             guard let object = NSObject.lks_object(withOid: task.oid) as? CALayer else {
@@ -240,7 +235,6 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         }
     }
 
-    @objc(methodNameListForClass:hasArg:)
     public static func methodNameList(for aClass: AnyClass, hasArg: Bool) -> [String] {
         let prefixesToVoid: Set<String> = [
             "_", "CA_", "cpl", "mf_", "vs_", "pep_", "isNS", "avkit_", "PG_", "px_", "pl_", "nsli_", "pu_", "pxg_",
@@ -278,7 +272,6 @@ public final class LKS_ConnectionRuntimeBridge: NSObject {
         return (array as NSArray).lookin_sortedArrayByStringLength() as? [String] ?? array
     }
 
-    @objc(handleInvokeWithObject:selector:resultDescription:resultObject:error:)
     public static func handleInvoke(
         with obj: NSObject,
         selector: Selector,

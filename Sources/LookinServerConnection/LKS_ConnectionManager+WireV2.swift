@@ -54,10 +54,10 @@ extension LKS_ConnectionManager {
         let group = detail.groupScreenshot
         let oid = detail.displayItemOid
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task.detached(priority: .userInitiated) { [weak self] in
             let soloData = solo.flatMap { WireScreenshotImageCoding.pngData(from: $0) }
             let groupData = group.flatMap { WireScreenshotImageCoding.pngData(from: $0) }
-            DispatchQueue.main.async { [weak self] in
+            await MainActor.run { [weak self] in
                 guard let self else { return }
                 if let data = soloData { self.sendWireScreenshot(oid: oid, kind: .solo, imageData: data, tag: tag) }
                 if let data = groupData { self.sendWireScreenshot(oid: oid, kind: .group, imageData: data, tag: tag) }
@@ -102,7 +102,7 @@ extension LKS_ConnectionManager {
                     "wire request decode FAIL type=\(envelope.requestType) tag=\(tag) inbuilt=\(envelope.inbuiltModification != nil)"
                 )
                 NSLog("LookinServer - wire request decode failed type:%u", envelope.requestType)
-                let attachment = LKConnectionResponseAttachment()
+                var attachment = LKConnectionResponseAttachment()
                 attachment.error = LookinConnectionErrors.inner as NSError
                 LKS_ConnectionManager.sharedInstance.respond(attachment, requestType: envelope.requestType, tag: tag)
             }
@@ -135,19 +135,7 @@ extension LKS_ConnectionManager {
     }
 
     func _sendRawPayload(_ data: Data, frameOfType: UInt32, tag: UInt32) {
-        guard let peerChannel_ else { return }
-        let nsData = data as NSData
-        let payload = nsData.createReferencingDispatchData()
-        peerChannel_.sendFrame(ofType: frameOfType, tag: tag, withPayload: payload) { error in
-            if let error {
-                NSLog(
-                    "LookinServer - wire v2 sendFrame failed type:%u tag:%u error:%@",
-                    frameOfType,
-                    tag,
-                    error as NSError
-                )
-            }
-        }
+        sendRawPayload(data, frameOfType: frameOfType, tag: tag)
     }
 }
 

@@ -3,7 +3,6 @@
 import Foundation
 import UIKit
 
-@objc(LKS_RequestHandler)
 public final class LKS_RequestHandler: NSObject {
 
     private let validRequestTypes: Set<UInt32>
@@ -29,16 +28,14 @@ public final class LKS_RequestHandler: NSObject {
         super.init()
     }
 
-    @objc(canHandleRequestType:)
     public func canHandleRequestType(_ requestType: UInt32) -> Bool {
         validRequestTypes.contains(requestType)
     }
 
-    @objc(handleRequestType:tag:object:)
     public func handleRequestType(_ requestType: UInt32, tag: UInt32, object: Any?) {
         switch requestType {
         case UInt32(LookinRequestTypePing):
-            let responseAttachment = LKConnectionResponseAttachment()
+            var responseAttachment = LKConnectionResponseAttachment()
             if !LKS_ConnectionManager.sharedInstance.applicationIsActive {
                 responseAttachment.appIsInBackground = true
             }
@@ -53,7 +50,7 @@ public final class LKS_RequestHandler: NSObject {
             let localIdentifiers = params["local"] as? [NSNumber]
             let appInfo = LKAppInfo.currentInfo(withScreenshot: needImages, icon: needImages, localIdentifiers: localIdentifiers)
 
-            let responseAttachment = LKConnectionResponseAttachment()
+            var responseAttachment = LKConnectionResponseAttachment()
             responseAttachment.data = appInfo
             LKS_ConnectionManager.sharedInstance.respond(responseAttachment, requestType: requestType, tag: tag)
 
@@ -64,7 +61,7 @@ public final class LKS_RequestHandler: NSObject {
                     clientVersion = version
                 }
             }
-            let responseAttachment = LKConnectionResponseAttachment()
+            var responseAttachment = LKConnectionResponseAttachment()
             responseAttachment.data = LKHierarchyInfo.staticInfo(withLookinVersion: clientVersion)
             LKS_ConnectionManager.sharedInstance.respond(responseAttachment, requestType: requestType, tag: tag)
 
@@ -78,7 +75,7 @@ public final class LKS_RequestHandler: NSObject {
                 "Peertalk inbuilt req tag=\(tag) targetOid=\(modification.targetOid) attr=\(modification.attrIdentifier ?? "?")"
             )
             LKS_InbuiltAttrModificationHandler.handleModification(modification) { data, error in
-                let attachment = LKConnectionResponseAttachment()
+                var attachment = LKConnectionResponseAttachment()
                 if let error {
                     LookinDiagLog.log(
                         "Peertalk inbuilt resp ERROR tag=\(tag) code=\((error as NSError).code) \(error.localizedDescription)"
@@ -115,7 +112,7 @@ public final class LKS_RequestHandler: NSObject {
             }
             let dataTotalCount = tasks.count
             LKS_InbuiltAttrModificationHandler.handlePatchWithTasks(tasks) { data in
-                let attrAttachment = LKConnectionResponseAttachment()
+                var attrAttachment = LKConnectionResponseAttachment()
                 attrAttachment.data = data
                 attrAttachment.dataTotalCount = UInt(dataTotalCount)
                 attrAttachment.currentDataCount = 1
@@ -139,7 +136,7 @@ public final class LKS_RequestHandler: NSObject {
             }
 
             if responsesDataTotalCount == 0 {
-                let attachment = LKConnectionResponseAttachment()
+                var attachment = LKConnectionResponseAttachment()
                 attachment.data = NSArray()
                 attachment.dataTotalCount = 0
                 attachment.currentDataCount = 0
@@ -155,7 +152,7 @@ public final class LKS_RequestHandler: NSObject {
             activeDetailHandlers[ObjectIdentifier(handler)] = handler
 
             handler.start(with: packages ?? [], block: { details in
-                let attachment = LKConnectionResponseAttachment()
+                var attachment = LKConnectionResponseAttachment()
                 attachment.data = details
                 attachment.dataTotalCount = UInt(responsesDataTotalCount)
                 attachment.currentDataCount = UInt(details.count)
@@ -171,7 +168,7 @@ public final class LKS_RequestHandler: NSObject {
         case UInt32(LookinRequestTypeFetchObject):
             let oid = (object as? NSNumber)?.uintValue ?? 0
             let targetObject = NSObject.lks_object(withOid: oid)
-            let attach = LKConnectionResponseAttachment()
+            var attach = LKConnectionResponseAttachment()
             if let targetObject {
                 attach.data = LookinObject.instance(with: targetObject)
             }
@@ -321,13 +318,13 @@ public final class LKS_RequestHandler: NSObject {
     }
 
     private func submitResponseWithError(_ error: Error, requestType: UInt32, tag: UInt32) {
-        let attachment = LKConnectionResponseAttachment()
+        var attachment = LKConnectionResponseAttachment()
         attachment.error = error as NSError
         LKS_ConnectionManager.sharedInstance.respond(attachment, requestType: requestType, tag: tag)
     }
 
     private func submitResponseWithData(_ data: NSObject?, requestType: UInt32, tag: UInt32) {
-        let attachment = LKConnectionResponseAttachment()
+        var attachment = LKConnectionResponseAttachment()
         attachment.data = data
         LKS_ConnectionManager.sharedInstance.respond(attachment, requestType: requestType, tag: tag)
     }

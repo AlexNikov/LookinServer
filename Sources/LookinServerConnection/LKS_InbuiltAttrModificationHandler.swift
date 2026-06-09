@@ -2,7 +2,6 @@
 
 import Foundation
 
-@objc(LKS_InbuiltAttrModificationHandler)
 public final class LKS_InbuiltAttrModificationHandler: NSObject {
 
     public static func handleModification(
@@ -13,14 +12,18 @@ public final class LKS_InbuiltAttrModificationHandler: NSObject {
             completion(nil, LookinConnectionErrors.inner)
             return
         }
-        LKS_ConnectionRuntimeBridge.handleInbuiltAttrModification(modification, completion: completion)
+        Task { @MainActor in
+            LKS_ConnectionRuntimeBridge.handleInbuiltAttrModification(modification, completion: completion)
+        }
     }
 
     public static func handlePatchWithTasks(
         _ tasks: [LookinStaticAsyncUpdateTask],
         block: @escaping (LookinDisplayItemDetail) -> Void
     ) {
-        LKS_ConnectionRuntimeBridge.handlePatch(with: tasks, block: block)
+        Task { @MainActor in
+            LKS_ConnectionRuntimeBridge.handlePatch(with: tasks, block: block)
+        }
     }
 }
 
