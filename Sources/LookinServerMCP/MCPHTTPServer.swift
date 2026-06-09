@@ -55,37 +55,42 @@ public final class MCPHTTPServer: NSObject {
 
     private func handle(connection: NWConnection) {
         connection.start(queue: queue)
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { [weak self] data, _, _, error in
+        Task { [weak self] in
             guard let self else {
                 connection.cancel()
                 return
             }
-
-            guard let data, error == nil else {
-                connection.cancel()
-                return
-            }
-
+            guard let data = await self.receive(from: connection) else { return }
             guard let request = MCPHTTPRequestParser.parse(data) else {
-                self.send(response: .error(message: "Bad request", statusCode: 400), on: connection)
+                await self.send(response: .error(message: "Bad request", statusCode: 400), on: connection)
                 return
             }
+            let response = await self.handler.handle(request: request)
+            await self.send(response: response, on: connection)
+        }
+    }
 
-            DispatchQueue.main.async {
-                self.handler.handle(request: request) { response in
-                    self.queue.async {
-                        self.send(response: response, on: connection)
-                    }
+    private func receive(from connection: NWConnection) async -> Data? {
+        await withCheckedContinuation { continuation in
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { data, _, _, error in
+                if let data, error == nil {
+                    continuation.resume(returning: data)
+                } else {
+                    connection.cancel()
+                    continuation.resume(returning: nil)
                 }
             }
         }
     }
 
-    private func send(response: MCPHTTPResponse, on connection: NWConnection) {
-        let payload = response.httpData
-        connection.send(content: payload, completion: .contentProcessed { _ in
-            connection.cancel()
-        })
+    private func send(response: MCPHTTPResponse, on connection: NWConnection) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let payload = response.httpData
+            connection.send(content: payload, completion: .contentProcessed { _ in
+                connection.cancel()
+                continuation.resume()
+            })
+        }
     }
 }
 #endif

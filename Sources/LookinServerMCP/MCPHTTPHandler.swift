@@ -5,6 +5,13 @@ import UIKit
 final class MCPHTTPHandler {
     typealias Completion = (MCPHTTPResponse) -> Void
 
+    @MainActor
+    func handle(request: MCPHTTPRequest) async -> MCPHTTPResponse {
+        await withCheckedContinuation { continuation in
+            handle(request: request, completion: continuation.resume(returning:))
+        }
+    }
+
     func handle(request: MCPHTTPRequest, completion: @escaping Completion) {
         switch (request.method, request.path) {
         case ("GET", "/status"):
@@ -116,7 +123,7 @@ final class MCPHTTPHandler {
             && requestEnvelope.tag == tag
             && requestEnvelope.wireVersion == LookinWireFormat.version
 
-        let attachment = LookinConnectionResponseAttachment()
+        var attachment = LookinConnectionResponseAttachment()
         attachment.appIsInBackground = UIApplication.shared.applicationState == .background
         guard let responseEnvelope = WireRequestResponseMapper.responseEnvelope(
             from: attachment,
@@ -159,7 +166,7 @@ final class MCPHTTPHandler {
     private func handleWireRoundtrip() -> MCPHTTPResponse {
         let info = LKHierarchyInfo.staticInfo(withLookinVersion: nil)
         let preCount = info.displayItems?.count ?? 0
-        let attachment = LookinConnectionResponseAttachment()
+        var attachment = LookinConnectionResponseAttachment()
         attachment.data = info
 
         do {
@@ -172,8 +179,8 @@ final class MCPHTTPHandler {
             }
             let jsonData = try LKWireCodecV2.encodeJSON(envelope)
             let decoded = try LKWireCodecV2.decodeJSON(WireResponseEnvelope.self, from: jsonData)
-            let roundtripAttachment = LookinConnectionResponseAttachment()
-            guard WireRequestResponseMapper.applyResponseEnvelope(decoded, to: roundtripAttachment),
+            var roundtripAttachment = LookinConnectionResponseAttachment()
+            guard WireRequestResponseMapper.applyResponseEnvelope(decoded, to: &roundtripAttachment),
                   let hierarchy = roundtripAttachment.data as? LookinHierarchyInfo else {
                 return .error(message: "Wire JSON roundtrip apply failed", statusCode: 500)
             }
