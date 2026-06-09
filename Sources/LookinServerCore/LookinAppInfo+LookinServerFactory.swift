@@ -2,6 +2,9 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 private typealias LKMultiplatformAdapter = LKS_MultiplatformAdapter

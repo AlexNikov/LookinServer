@@ -2,6 +2,12 @@
 
 import Foundation
 import UIKit
+#if canImport(LookinServerCategories)
+import LookinServerCategories
+#endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 @objc(LKS_CustomDisplayItemsMaker)
 public final class LKS_CustomDisplayItemsMaker: NSObject {

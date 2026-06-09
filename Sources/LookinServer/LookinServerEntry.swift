@@ -1,3 +1,8 @@
+#if os(iOS) || os(tvOS) || os(visionOS)
+#if canImport(LookinServerConnection)
+import LookinServerConnection
+#endif
+#endif
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 /// Triggers `LKS_ConnectionManager` bootstrap when the LookinServer product module loads.

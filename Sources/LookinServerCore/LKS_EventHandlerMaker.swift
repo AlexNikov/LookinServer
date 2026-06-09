@@ -2,6 +2,12 @@
 
 import Foundation
 import UIKit
+#if canImport(LookinServerOthers)
+import LookinServerOthers
+#endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 @objc(LKS_EventHandlerMaker)
 public final class LKS_EventHandlerMaker: NSObject {

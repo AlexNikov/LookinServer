@@ -2,6 +2,9 @@
 
 import Foundation
 import UIKit
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 public final class LKS_AttrGroupsMaker: NSObject {
 

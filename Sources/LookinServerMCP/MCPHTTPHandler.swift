@@ -1,6 +1,24 @@
 #if SHOULD_COMPILE_LOOKIN_SERVER
 import Foundation
 import UIKit
+#if canImport(LookinServerCategories)
+import LookinServerCategories
+#endif
+#if canImport(LookinServerConnection)
+import LookinServerConnection
+#endif
+#if canImport(LookinServerCoreSwift)
+import LookinServerCoreSwift
+#endif
+#if canImport(LookinServerOthers)
+import LookinServerOthers
+#endif
+#if canImport(LookinServerPeertalk)
+import LookinServerPeertalk
+#endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 @MainActor
 final class MCPHTTPHandler {

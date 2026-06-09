@@ -3,6 +3,21 @@
 import Foundation
 import UIKit
 
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
+#if canImport(LookinServerCoreSwift)
+import LookinServerCoreSwift
+#endif
+#if canImport(LookinServerCategories)
+import LookinServerCategories
+#endif
+#if canImport(LookinServerOthers)
+import LookinServerOthers
+#endif
+#if canImport(LookinServerPeertalk)
+import LookinServerPeertalk
+#endif
 extension LKS_ConnectionManager {
     /// Detail responses use wire v2 JSON (attrs + LKPG screenshots).
     func respondWireV2(_ attachment: LKConnectionResponseAttachment, requestType: UInt32, tag: UInt32) {
@@ -90,7 +105,7 @@ extension LKS_ConnectionManager {
         _sendRawPayload(payload, frameOfType: LookinWireFormat.frameTypeScreenshot, tag: tag)
     }
 
-    func handleWireJSONRequest(_ envelope: WireRequestEnvelope, tag: UInt32) async {
+    public func handleWireJSONRequest(_ envelope: WireRequestEnvelope, tag: UInt32) async {
         guard LookinWireFormat.validateWireVersion(envelope.wireVersion, context: "request") else {
             return
         }

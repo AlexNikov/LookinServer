@@ -1,7 +1,13 @@
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import UIKit
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
+#if canImport(LookinServerOthers)
+import LookinServerOthers
+#endif
 @objc(LKS_ExportManager)
 public final class LKS_ExportManager: NSObject {
 
@@ -34,7 +40,7 @@ public final class LKS_ExportManager: NSObject {
             return
         }
 
-        NotificationCenter.default.post(name: .lookinWillExport, object: nil)
+        NotificationCenter.default.post(name: Notification.Name("Lookin_WillExport"), object: nil)
 
         if maskView == nil {
             maskView = MaskView()
@@ -79,7 +85,7 @@ public final class LKS_ExportManager: NSObject {
                 )
             }
 
-            NotificationCenter.default.post(name: .lookinDidFinishExport, object: nil)
+            NotificationCenter.default.post(name: Notification.Name("Lookin_DidFinishExport"), object: nil)
         }
     }
 

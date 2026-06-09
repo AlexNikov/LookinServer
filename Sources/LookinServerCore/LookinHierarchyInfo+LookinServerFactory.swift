@@ -1,7 +1,13 @@
 import Foundation
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 
+#if canImport(LookinServerOthers)
+import LookinServerOthers
+#endif
 extension LKHierarchyInfo {
     @objc(staticInfoWithLookinVersion:)
     public class func staticInfo(withLookinVersion version: String?) -> LKHierarchyInfo {

@@ -2,6 +2,15 @@
 
 import Foundation
 import UIKit
+#if canImport(LookinServerBase)
+import LookinServerBase
+#endif
+#if canImport(LookinServerOthers)
+import LookinServerOthers
+#endif
+#if canImport(LookinServerShared)
+import LookinServerShared
+#endif
 
 // MARK: - Type encodings (runtime probe; NSInvocation is unavailable in Swift)
 
