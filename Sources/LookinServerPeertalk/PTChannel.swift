@@ -186,6 +186,7 @@ public actor PTChannel {
         connState = kConnStateConnected
         isConnected = true
         targetPort = port
+        startReadLoopIfTransportReady()
     }
 
     private func makeDispatchIO(fd: Int32) -> DispatchIO {
@@ -199,6 +200,45 @@ public actor PTChannel {
     }
 
     public func connect(
+        toPort port: UInt16,
+        ipv4Address address: in_addr_t = in_addr_t(INADDR_LOOPBACK)
+    ) async throws {
+        guard connState == kConnStateNone else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(EPERM), userInfo: nil)
+        }
+        connState = kConnStateConnecting
+
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd != -1 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno), userInfo: nil)
+        }
+
+        var addr = sockaddr_in()
+        memset(&addr, 0, MemoryLayout<sockaddr_in>.size)
+        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = LookinPTByteOrder.htons(port)
+        addr.sin_addr.s_addr = in_addr_t(LookinPTByteOrder.htonl(UInt32(address)))
+
+        var on: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout.size(ofValue: on)))
+
+        let connectResult = withUnsafePointer(to: &addr) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+
+        if connectResult == -1 {
+            let connectErrno = errno
+            Darwin.close(fd)
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(connectErrno), userInfo: nil)
+        }
+
+        attachConnectedTransport(makeDispatchIO(fd: fd), port: Int(port))
+    }
+
+    public func connect(
         toPort port: Int32,
         over usbHub: LookinPTUSBHub,
         deviceID: NSNumber
@@ -209,9 +249,7 @@ public actor PTChannel {
         connState = kConnStateConnecting
         isConnected = true
         let io = try await usbHub.connectAsync(toDevice: deviceID, port: Int(port))
-        dispatchIO = io
-        connState = kConnStateConnected
-        await startReadLoop()
+        attachConnectedTransport(io, port: Int(port))
     }
 
     // MARK: - Frames stream
@@ -223,7 +261,7 @@ public actor PTChannel {
                 guard let self else { return }
                 Task { await self.clearFrameContinuation() }
             }
-            startReadLoop()
+            startReadLoopIfTransportReady()
         }
     }
 
@@ -245,12 +283,29 @@ public actor PTChannel {
         acceptContinuation = nil
     }
 
+    private func startReadLoopIfTransportReady() {
+        guard dispatchIO != nil, frameContinuation != nil else { return }
+        startReadLoop()
+    }
+
+    /// Drop a prior `frames()` consumer so a new read loop can attach (MCP discovery channel reuse).
+    public func restartFrameConsumer() {
+        readLoopTask?.cancel()
+        readLoopTask = nil
+        frameContinuation?.finish()
+        frameContinuation = nil
+    }
+
     public func startReadLoop() {
-        guard readLoopTask == nil else { return }
+        if let task = readLoopTask, !task.isCancelled {
+            return
+        }
+        readLoopTask?.cancel()
         readLoopTask = Task { await self.runReadLoop() }
     }
 
     private func runReadLoop() async {
+        defer { readLoopTask = nil }
         do {
             while !Task.isCancelled {
                 let frame = try await readNextFrame()

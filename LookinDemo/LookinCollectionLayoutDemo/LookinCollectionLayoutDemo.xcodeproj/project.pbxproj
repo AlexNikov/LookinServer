@@ -7,27 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		756745F4DD554BA2A340B4E0 /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */; };
 		B10000012AFFF7E300061A5B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000013AFFF7E300061A5B /* AppDelegate.swift */; };
 		B10000022AFFF7E300061A5B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000023AFFF7E300061A5B /* SceneDelegate.swift */; };
 		B10000032AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000033AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift */; };
 		B10000042AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000043AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift */; };
-		756745F4DD554BA2A340B4E0 /* LookinDemoObjCBorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */; };
-		CCBDE8CAEF91EAD4FE247CDA /* Pods_LookinCollectionLayoutDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 458093CAE05955C0B0828D6C /* Pods_LookinCollectionLayoutDemo.framework */; };
 		B10000092AFFF7E300061A5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000A2AFFF7E300061A5B /* Assets.xcassets */; };
+		CCBDE8CAEF91EAD4FE247CDA /* Pods_LookinCollectionLayoutDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 458093CAE05955C0B0828D6C /* Pods_LookinCollectionLayoutDemo.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2CE43EE4EA51A2BB1563F725 /* Pods-LookinCollectionLayoutDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinCollectionLayoutDemo.release.xcconfig"; path = "Target Support Files/Pods-LookinCollectionLayoutDemo/Pods-LookinCollectionLayoutDemo.release.xcconfig"; sourceTree = "<group>"; };
+		458093CAE05955C0B0828D6C /* Pods_LookinCollectionLayoutDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LookinCollectionLayoutDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 		B10000013AFFF7E300061A5B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B10000023AFFF7E300061A5B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		B10000033AFFF7E300061A5B /* LKCollectionLayoutDemoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKCollectionLayoutDemoViewController.swift; sourceTree = "<group>"; };
 		B10000043AFFF7E300061A5B /* LKCollectionLayoutDemoCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKCollectionLayoutDemoCells.swift; sourceTree = "<group>"; };
-		2CE43EE4EA51A2BB1563F725 /* Pods-LookinCollectionLayoutDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinCollectionLayoutDemo.release.xcconfig"; path = "Target Support Files/Pods-LookinCollectionLayoutDemo/Pods-LookinCollectionLayoutDemo.release.xcconfig"; sourceTree = "<group>"; };
-		458093CAE05955C0B0828D6C /* Pods_LookinCollectionLayoutDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LookinCollectionLayoutDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B100000A2AFFF7E300061A5B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B100000B2AFFF7E300061A5B /* LookinCollectionLayoutDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LookinCollectionLayoutDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B100000C2AFFF7E300061A5B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		DF39AB5AEA7EE8302EAD6279 /* Pods-LookinCollectionLayoutDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinCollectionLayoutDemo.debug.xcconfig"; path = "Target Support Files/Pods-LookinCollectionLayoutDemo/Pods-LookinCollectionLayoutDemo.debug.xcconfig"; sourceTree = "<group>"; };
-		8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LookinDemoObjCBorder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,8 +48,16 @@
 				DF39AB5AEA7EE8302EAD6279 /* Pods-LookinCollectionLayoutDemo.debug.xcconfig */,
 				2CE43EE4EA51A2BB1563F725 /* Pods-LookinCollectionLayoutDemo.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		2876C418FC1E4BD896D6C24B /* LookinDemoSharedObjC */ = {
+			isa = PBXGroup;
+			children = (
+				8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */,
+			);
+			name = LookinDemoSharedObjC;
+			path = ../Shared/ObjectiveC;
 			sourceTree = "<group>";
 		};
 		B100000E2AFFF7E300061A5B = {
@@ -90,15 +98,6 @@
 				458093CAE05955C0B0828D6C /* Pods_LookinCollectionLayoutDemo.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		2876C418FC1E4BD896D6C24B /* LookinDemoSharedObjC */ = {
-			isa = PBXGroup;
-			children = (
-				8859E0DAF63944C78689182F /* LookinDemoObjCBorder.m */,
-			);
-			name = LookinDemoSharedObjC;
-			path = ../Shared/ObjectiveC;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -269,8 +268,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9938T969H4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LookinCollectionLayoutDemo/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "CollLayout Swift";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -280,11 +281,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				INFOPLIST_KEY_CFBundleDisplayName = "CollLayout Swift";
 				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinCollectionLayoutDemo;
-				SWIFT_VERSION = 5.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -297,8 +297,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9938T969H4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LookinCollectionLayoutDemo/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "CollLayout Swift";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -308,11 +310,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				INFOPLIST_KEY_CFBundleDisplayName = "CollLayout Swift";
 				PRODUCT_BUNDLE_IDENTIFIER = Lookin.LookinCollectionLayoutDemo;
-				SWIFT_VERSION = 5.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
