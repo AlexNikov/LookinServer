@@ -3,7 +3,6 @@
 import QuartzCore
 
 extension CALayer {
-    @objc(lookin_removeImplicitAnimations)
     public func lookin_removeImplicitAnimations() {
         var actions: [String: CAAction] = [
             #keyPath(CALayer.bounds): NSNull(),

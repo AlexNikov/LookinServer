@@ -9,18 +9,15 @@ import LookinServerShared
 #endif
 
 extension CALayer {
-    @objc(lks_hostView)
     public var lks_hostView: UIView? {
         guard let delegate = delegate as? UIView, delegate.layer === self else { return nil }
         return delegate
     }
 
-    @objc(lks_groupScreenshotWithLowQuality:)
     public func lks_groupScreenshot(withLowQuality lowQuality: Bool) -> UIImage? {
         captureGroupScreenshot(lowQuality: lowQuality)
     }
 
-    @objc(lks_soloScreenshotWithLowQuality:)
     public func lks_soloScreenshot(withLowQuality lowQuality: Bool) -> UIImage? {
         guard !(sublayers?.isEmpty ?? true) else { return nil }
         return captureSoloScreenshot(lowQuality: lowQuality)
@@ -40,7 +37,6 @@ extension CALayer {
         return array
     }
 
-    @objc(lks_getClassListOfObject:endingClass:)
     public static func lks_getClassList(of object: Any, endingClass: String) -> [String] {
         guard let object = object as? NSObject else { return [] }
         var completedList = object.lks_classChainList()

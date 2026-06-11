@@ -9,7 +9,6 @@ import LookinServerShared
 #endif
 
 extension NSObject {
-    @objc(lks_registerOid)
     public func lks_registerOid() -> UInt {
         if lks_oid == 0 {
             let oid = LKS_ObjectRegistry.sharedInstance.addObject(self)
@@ -18,7 +17,7 @@ extension NSObject {
         return lks_oid
     }
 
-    @objc var lks_oid: UInt {
+    var lks_oid: UInt {
         get {
             let number = lookin_getBindObject(forKey: "lks_oid") as? NSNumber
             return number?.uintValue ?? 0
@@ -28,7 +27,6 @@ extension NSObject {
         }
     }
 
-    @objc(lks_objectWithOid:)
     public static func lks_object(withOid oid: UInt) -> NSObject? {
         LKS_ObjectRegistry.sharedInstance.objectWithOid(oid)
     }
@@ -43,7 +41,7 @@ extension NSObject {
         }
     }
 
-    @objc public var lks_specialTrace: String? {
+    public var lks_specialTrace: String? {
         get { lookin_getBindObject(forKey: "lks_specialTrace") as? String }
         set {
             lookin_bindObject(newValue, forKey: "lks_specialTrace")
@@ -53,7 +51,6 @@ extension NSObject {
         }
     }
 
-    @objc(lks_clearAllObjectsTraces)
     public static func lks_clearAllObjectsTraces() {
         for case let obj as NSObject in allObjectsWithTraces().allObjects {
             obj.lks_ivarTraces = nil
@@ -71,7 +68,6 @@ extension NSObject {
         return Storage.array
     }
 
-    @objc(lks_classChainList)
     public func lks_classChainList() -> [String] {
         var classChainList: [String] = []
         var currentClass: AnyClass? = type(of: self)
