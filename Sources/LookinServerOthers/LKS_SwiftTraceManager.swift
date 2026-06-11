@@ -36,11 +36,8 @@ public class LKS_SwiftTraceManager: NSObject {
                         return
                     }
                     
-                    let ivarTrace = LookinIvarTrace()
-                    ivarTrace.hostObject = hostObject
-                    
+                    var ivarTrace = LookinIvarTrace()
                     ivarTrace.hostClassName = makeDisplayClassName(superClass: unwrappedCurrClass, childClass: initialInClass)
-                    
                     ivarTrace.ivarName = label
                     
                     if (value === hostObject) {

@@ -24,7 +24,7 @@ public class LookinObject: NSObject, NSCopying {
         copy.memoryAddress = memoryAddress
         copy.classChainList = classChainList
         copy.specialTrace = specialTrace
-        copy.ivarTraces = ivarTraces?.map { $0.copy() as! LookinIvarTrace }
+        copy.ivarTraces = ivarTraces
         return copy
     }
 

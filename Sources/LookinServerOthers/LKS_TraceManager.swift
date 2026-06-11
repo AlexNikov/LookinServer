@@ -175,8 +175,7 @@ public final class LKS_TraceManager: NSObject {
                 continue
             }
 
-            let ivarTrace = LookinIvarTrace()
-            ivarTrace.hostObject = hostObject
+            var ivarTrace = LookinIvarTrace()
             ivarTrace.hostClassName = makeDisplayClassName(super: targetClass, child: type(of: hostObject))
             ivarTrace.ivarName = ivarName
 
@@ -194,17 +193,12 @@ public final class LKS_TraceManager: NSObject {
                 }
             }
 
-            if Self.invalidIvarTraces.contains(where: { $0.isEqual(ivarTrace) }) {
-                continue
-            }
-
-            guard ivarObject.responds(to: #selector(getter: NSObject.lks_ivarTraces)),
-                  ivarObject.responds(to: #selector(setter: NSObject.lks_ivarTraces)) else {
+            if Self.invalidIvarTraces.contains(ivarTrace) {
                 continue
             }
 
             var traces = ivarObject.lks_ivarTraces ?? []
-            if !traces.contains(where: { $0.isEqual(ivarTrace) }) {
+            if !traces.contains(ivarTrace) {
                 traces.append(ivarTrace)
                 ivarObject.lks_ivarTraces = traces
             }
@@ -226,7 +220,7 @@ public final class LKS_TraceManager: NSObject {
 
     private static let invalidIvarTraces: [LookinIvarTrace] = {
         func trace(hostClassName: String, ivarName: String) -> LookinIvarTrace {
-            let item = LookinIvarTrace()
+            var item = LookinIvarTrace()
             item.hostClassName = hostClassName
             item.ivarName = ivarName
             return item

@@ -430,7 +430,7 @@ final class LookinServerSharedTests: XCTestCase {
     }
 
     func testWireDisplayItemObjectMetadataAndBackgroundColorRoundTrip() {
-        let ivarTrace = LookinIvarTrace()
+        var ivarTrace = LookinIvarTrace()
         ivarTrace.hostClassName = "LKDemoLeftRailView"
         ivarTrace.ivarName = "leftRail"
 

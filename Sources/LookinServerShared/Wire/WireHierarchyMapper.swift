@@ -39,7 +39,7 @@ private enum WireHierarchyObjectMapping {
     }
 
     static func lookinIvarTrace(from wire: WireIvarTrace) -> LookinIvarTrace {
-        let trace = LookinIvarTrace()
+        var trace = LookinIvarTrace()
         trace.relation = wire.relation
         trace.hostClassName = wire.hostClassName
         trace.ivarName = wire.ivarName

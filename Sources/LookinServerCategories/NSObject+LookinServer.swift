@@ -33,10 +33,10 @@ extension NSObject {
         LKS_ObjectRegistry.sharedInstance.objectWithOid(oid)
     }
 
-    @objc public var lks_ivarTraces: [LookinIvarTrace]? {
+    public var lks_ivarTraces: [LookinIvarTrace]? {
         get { lookin_getBindObject(forKey: "lks_ivarTraces") as? [LookinIvarTrace] }
         set {
-            lookin_bindObject(newValue?.map { $0 }, forKey: "lks_ivarTraces")
+            lookin_bindObject(newValue, forKey: "lks_ivarTraces")
             if newValue != nil {
                 Self.allObjectsWithTraces().addPointer(Unmanaged.passUnretained(self).toOpaque())
             }
