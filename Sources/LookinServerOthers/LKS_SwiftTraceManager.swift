@@ -22,28 +22,31 @@ public class LKS_SwiftTraceManager: NSObject {
         var currClass: AnyClass? = type(of: hostObject)
         let initialInClass: AnyClass? = currClass
         
+        let hostView = hostObject as? UIView
+
         while let m = mirror, let unwrappedCurrClass = currClass {
+            let hostDisplayClassName = makeDisplayClassName(superClass: unwrappedCurrClass, childClass: initialInClass)
             m.children.forEach { child in
                 if let child = child as? (label: String?, value: NSObject) {
                     let label: String? = child.label?.replacingOccurrences(of: "$__lazy_storage_$_", with: "")
                     let value = child.value
-                    
+
                     guard (value is UIView) || (value is CALayer) || (value is UIViewController) || (value is UIGestureRecognizer) else {
                         return
                     }
-                    
+
                     guard let label = label, label.count > 0 else {
                         return
                     }
-                    
+
                     var ivarTrace = LookinIvarTrace()
-                    ivarTrace.hostClassName = makeDisplayClassName(superClass: unwrappedCurrClass, childClass: initialInClass)
+                    ivarTrace.hostClassName = hostDisplayClassName
                     ivarTrace.ivarName = label
-                    
-                    if (value === hostObject) {
+
+                    if value === hostObject {
                         ivarTrace.relation = lookinIvarTraceRelationValueSelf
-                    } else if let hostView = hostObject as? UIView {
-                        var ivarLayer: CALayer? = nil
+                    } else if let hostView {
+                        var ivarLayer: CALayer?
                         if let layer = value as? CALayer {
                             ivarLayer = layer
                         } else if let view = value as? UIView {

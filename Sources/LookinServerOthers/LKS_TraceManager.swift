@@ -130,21 +130,21 @@ public final class LKS_TraceManager: NSObject {
         LKS_SwiftTraceManager.swiftMarkIVars(ofObject: object)
     }
 
+    private static let terminationPrefixes = ["NSObject", "UIResponder", "UIButton", "UIButtonLabel"]
+
     private func markIVars(of hostObject: NSObject, targetClass: AnyClass?) {
         guard let targetClass else { return }
 
-        let prefixesToTerminateRecursion = ["NSObject", "UIResponder", "UIButton", "UIButtonLabel"]
-        let hasPrefix = (prefixesToTerminateRecursion as NSArray).lookin_any { obj in
-            guard let prefix = obj as? String else { return false }
-            return NSStringFromClass(targetClass).hasPrefix(prefix)
-        }
-        if hasPrefix {
+        let targetClassName = NSStringFromClass(targetClass)
+        if Self.terminationPrefixes.contains(where: { targetClassName.hasPrefix($0) }) {
             return
         }
 
         var count: UInt32 = 0
         guard let ivars = class_copyIvarList(targetClass, &count) else { return }
         defer { free(ivars) }
+
+        let hostDisplayClassName = makeDisplayClassName(super: targetClass, child: type(of: hostObject))
 
         for index in 0..<Int(count) {
             let ivar = ivars[index]
@@ -176,7 +176,7 @@ public final class LKS_TraceManager: NSObject {
             }
 
             var ivarTrace = LookinIvarTrace()
-            ivarTrace.hostClassName = makeDisplayClassName(super: targetClass, child: type(of: hostObject))
+            ivarTrace.hostClassName = hostDisplayClassName
             ivarTrace.ivarName = ivarName
 
             if hostObject === ivarObject {
