@@ -22,19 +22,29 @@ pod install
 open LookinMCPSample.xcworkspace
 ```
 
-## Cursor MCP
+## Cursor / Qwen Code MCP
 
-Add to `~/.cursor/mcp.json`:
+Full setup: [docs/CURSOR_MCP_SETUP.md](../../docs/CURSOR_MCP_SETUP.md).
 
-```json
-{
-  "mcpServers": {
-    "lookin": {
-      "command": "npx",
-      "args": ["-y", "lookin-mcp-ios"]
-    }
-  }
-}
+**Lookin monorepo** — from repo root:
+
+```bash
+cd lookin-ios-mcp && npm install
 ```
 
-Run the app in Debug, then use tools: `lookin_get_hierarchy`, `lookin_get_attributes`, `lookin_get_screenshot`.
+- **Cursor:** enable `lookin-ios` in Settings → MCP (`LookinServer/.cursor/mcp.json` или monorepo `.cursor/mcp.json`)
+- **Qwen Code:** `LookinServer/.qwen/settings.json` or `qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project`
+
+Run the app in Debug on simulator, then use tools:
+
+- `lookin_get_hierarchy`
+- `lookin_get_attributes`
+- `lookin_get_screenshot`
+- `lookin_tap`
+- `lookin_swipe`
+
+Smoke without Cursor:
+
+```bash
+curl -sf http://127.0.0.1:47190/status
+```

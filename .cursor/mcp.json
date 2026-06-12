@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "lookin": {
-      "command": "npx",
-      "args": ["-y", "lookin-mcp-ios"]
+    "lookin-ios": {
+      "command": "node",
+      "args": ["lookin-ios-mcp/index.mjs"]
     }
   }
 }

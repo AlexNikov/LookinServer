@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "lookin-ios": {
+      "command": "node",
+      "args": ["lookin-ios-mcp/index.mjs"],
+      "description": "LookinServer iOS — hierarchy, tap, swipe (HTTP :47190)",
+      "timeout": 60000
+    }
+  }
+}

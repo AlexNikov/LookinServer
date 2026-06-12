@@ -111,7 +111,7 @@ build/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 
-# End of https://www.toptal.com/developers/gitignore/api/carthage,cocoapods,fastlane,macos,swiftpackagemanager,xcode 
+lookin-ios-mcp/node_modules/
 .swiftpm
 LookinDemo/OC/LookinDemoOC.xcodeproj/project.xcworkspace/xcshareddata
 LookinDemo/Swift/LookinDemoSwift.xcodeproj/project.xcworkspace/xcshareddata

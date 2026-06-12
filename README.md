@@ -25,41 +25,52 @@ To use Lookin macOS app, you need to integrate LookinServer (iOS Framework of Lo
 
 ## MCP (Model Context Protocol) — Debug only
 
-This fork adds an HTTP API on `127.0.0.1:47190` (compatible with [lookin-mcp-ios](https://github.com/hepiao3/lookin-mcp)) for AI agents in Cursor / Claude Code.
+HTTP API on `127.0.0.1:47190` inside the iOS app. For AI agents you also need **lookin-ios-mcp** (Node) — see [docs/CURSOR_MCP_SETUP.md](docs/CURSOR_MCP_SETUP.md) (Cursor, Qwen Code).
 
 ### CocoaPods
 ```ruby
 pod 'LookinServer', :subspecs => ['Swift', 'MCP'], :configurations => ['Debug']
 ```
 
-### Cursor
-```json
-{
-  "mcpServers": {
-    "lookin": {
-      "command": "npx",
-      "args": ["-y", "lookin-mcp-ios"]
-    }
-  }
-}
+### Cursor (Lookin monorepo)
+
+```bash
+cd lookin-ios-mcp && npm install
 ```
 
+Enable `lookin-ios` in Cursor Settings → MCP. Monorepo: [`.cursor/mcp.json`](../.cursor/mcp.json) → `LookinServer/lookin-ios-mcp/index.mjs`. См. [lookin-ios-mcp/README.md](lookin-ios-mcp/README.md).
+
+### Qwen Code (Lookin monorepo)
+
+```bash
+cd lookin-ios-mcp && npm install
+```
+
+Monorepo: [`.qwen/settings.json`](../.qwen/settings.json). LookinServer only: [`.qwen/settings.json`](.qwen/settings.json).
+
 Run your app in **Debug** on simulator, then:
+
 ```bash
 curl http://127.0.0.1:47190/status
 curl http://127.0.0.1:47190/hierarchy
 ```
 
-Sample app: `LookinDemo/LookinMCPSample/` (SPM + CocoaPods). See [LookinMCPSample README](LookinDemo/LookinMCPSample/README.md).
+Sample app: `LookinDemo/LookinMCPSample/`. See [LookinMCPSample README](LookinDemo/LookinMCPSample/README.md).
 
 ### HTTP routes
+
+Full list and curl examples: [Sources/LookinServerMCP/README.md](Sources/LookinServerMCP/README.md).
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/status` | App name, bundle id, screen metrics |
 | GET | `/hierarchy` | View/layer tree |
+| GET | `/tap-targets` | Tappable views |
 | GET | `/view/:oid/attributes` | Attribute groups |
 | POST | `/view/:oid/attributes` | Modify attribute |
 | GET | `/view/:oid/screenshot` | PNG base64 |
+| POST | `/tap` | Synthetic tap (`oid` or `x`+`y`) |
+| POST | `/swipe` | Synthetic swipe (`oid`+`direction` or coordinates) |
 
 Swift runtime lives in `Sources/LookinServer*` (wire v2 only), including ivar trace (`LookinServerBase`) and `LookinObjCExceptionCatch.m` + `LookinObjCExceptionBridge.swift`; see [`Sources/README.md`](Sources/README.md).
 
