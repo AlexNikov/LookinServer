@@ -1,14 +1,26 @@
 import { z } from "zod";
 import { lookinClient } from "./client.mjs";
+import { appSession } from "./app-session.mjs";
+
+const appGuardSchema = {
+  expectedBundleId: z
+    .string()
+    .optional()
+    .describe(
+      "Fail with wrong_app if foreground bundleId differs. Falls back to lookin_set_expected_app session value."
+    ),
+};
 
 const oidSchema = z.number().optional();
 const pointSchema = {
+  ...appGuardSchema,
   oid: oidSchema.describe("View oid."),
   x: z.number().optional().describe("Window X."),
   y: z.number().optional().describe("Window Y."),
 };
 
 const searchSchema = {
+  ...appGuardSchema,
   className: z.string().optional().describe("Exact UIView class name."),
   classNameContains: z.string().optional().describe("Class name substring."),
   accessibilityIdentifier: z.string().optional(),
@@ -26,10 +38,61 @@ function blockedResult(blocked) {
   return { content: [{ type: "text", text: blocked }] };
 }
 
+function jsonResultWithContext(result, appContext) {
+  if (!appContext?.warning && !appContext?.appChanged) {
+    return jsonResult(result);
+  }
+  const payload =
+    result !== null && typeof result === "object" && !Array.isArray(result)
+      ? {
+          ...result,
+          _appContext: {
+            appChanged: appContext.appChanged,
+            warning: appContext.warning,
+            activeApp: appContext.activeApp,
+            previousBundleId: appContext.previousBundleId,
+            expectedBundleId: appContext.expectedBundleId,
+          },
+        }
+      : {
+          data: result,
+          _appContext: {
+            appChanged: appContext.appChanged,
+            warning: appContext.warning,
+            activeApp: appContext.activeApp,
+            previousBundleId: appContext.previousBundleId,
+            expectedBundleId: appContext.expectedBundleId,
+          },
+        };
+  return jsonResult(payload);
+}
+
+function wrongAppPayload(appContext) {
+  return JSON.stringify({
+    error: "wrong_app",
+    message: appContext.warning,
+    activeApp: appContext.activeApp,
+    expectedBundleId: appContext.expectedBundleId,
+    hint: "Bring the expected app to foreground, call lookin_set_expected_app, or omit expectedBundleId.",
+  });
+}
+
+function noLookinAppPayload(err) {
+  const message = err instanceof Error ? err.message : String(err);
+  return JSON.stringify({
+    error: "no_lookin_app",
+    message,
+    hint:
+      "Launch a Debug app with LookinServer MCP subspec in the foreground. On simulator only one app can own :47190 — check with: lsof -i tcp:47190",
+  });
+}
+
 export const VIEW_TOOLS = [
   "lookin_get_hierarchy",
   "lookin_get_status",
+  "lookin_get_active_app",
   "lookin_get_tap_targets",
+  "lookin_list_text_inputs",
   "lookin_get_attributes",
   "lookin_modify_attribute",
   "lookin_get_screenshot",
@@ -61,53 +124,124 @@ export const VIEW_TOOLS = [
 export function registerLookinTools(server, deps) {
   const { ensureDeviceSelected, limitDepth, countItems, deviceManager } = deps;
 
-  const guard = async () => {
+  const guardApp = async (expectedBundleId) => {
     const blocked = await ensureDeviceSelected(VIEW_TOOLS);
-    return blocked;
+    if (blocked) return { blocked };
+    try {
+      const status = await lookinClient.getStatus();
+      const appContext = appSession.evaluateStatus(status, expectedBundleId);
+      if (appContext.wrongApp) {
+        return { blocked: wrongAppPayload(appContext) };
+      }
+      return { appContext };
+    } catch (err) {
+      return { blocked: noLookinAppPayload(err) };
+    }
+  };
+
+  const runGuarded = async (expectedBundleId, work) => {
+    const g = await guardApp(expectedBundleId);
+    if (g.blocked) return blockedResult(g.blocked);
+    const result = await work(g.appContext);
+    return jsonResultWithContext(result, g.appContext);
+  };
+
+  const stripExpectedBundleId = (args) => {
+    const { expectedBundleId, ...rest } = args;
+    return { expectedBundleId, rest };
   };
 
   server.tool(
     "lookin_get_hierarchy",
     "UI view hierarchy tree (oid, className, frame).",
     {
+      ...appGuardSchema,
       includeSystemViews: z.boolean().optional(),
       maxDepth: z.number().optional(),
     },
-    async ({ maxDepth }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      const result = await lookinClient.getHierarchy();
-      const depth = maxDepth ?? 0;
-      const items = depth > 0 ? limitDepth(result.items ?? [], depth) : (result.items ?? []);
-      return jsonResult({ appName: result.appName, totalViews: countItems(items), hierarchy: items });
+    async ({ expectedBundleId, maxDepth }) => {
+      return runGuarded(expectedBundleId, async () => {
+        const result = await lookinClient.getHierarchy();
+        const depth = maxDepth ?? 0;
+        const items = depth > 0 ? limitDepth(result.items ?? [], depth) : (result.items ?? []);
+        return { appName: result.appName, totalViews: countItems(items), hierarchy: items };
+      });
     }
   );
 
-  server.tool("lookin_get_status", "App status: name, bundle, screen, Peertalk.", {}, async () => {
-    const blocked = await guard();
-    if (blocked) return blockedResult(blocked);
-    return jsonResult(await lookinClient.getStatus());
-  });
+  server.tool(
+    "lookin_get_status",
+    "App status: name, bundle, screen, Peertalk.",
+    { ...appGuardSchema },
+    async ({ expectedBundleId }) => {
+      const g = await guardApp(expectedBundleId);
+      if (g.blocked) return blockedResult(g.blocked);
+      const status = await lookinClient.getStatus();
+      appSession.evaluateStatus(status, expectedBundleId);
+      return jsonResult(status);
+    }
+  );
+
+  server.tool(
+    "lookin_get_active_app",
+    "Foreground Lookin app: bundleId, appName, app-changed warning vs last call.",
+    { ...appGuardSchema },
+    async ({ expectedBundleId }) => {
+      const g = await guardApp(expectedBundleId);
+      if (g.blocked) return blockedResult(g.blocked);
+      const status = await lookinClient.getStatus();
+      return jsonResult(appSession.activeAppPayload(status, expectedBundleId));
+    }
+  );
+
+  server.tool(
+    "lookin_set_expected_app",
+    "Remember expected bundleId for all subsequent view tools (wrong_app guard).",
+    { bundleId: z.string().describe("e.g. Lookin.LookinMCPSample") },
+    async ({ bundleId }) => {
+      const set = appSession.setExpectedBundleId(bundleId);
+      return jsonResult({
+        success: true,
+        expectedBundleId: set,
+        hint: "View tools will fail with wrong_app if foreground app bundleId differs.",
+      });
+    }
+  );
+
+  server.tool(
+    "lookin_clear_expected_app",
+    "Clear session expected bundleId (stop wrong_app guard).",
+    {},
+    async () => {
+      appSession.clearExpectedBundleId();
+      return jsonResult({ success: true, expectedBundleId: null });
+    }
+  );
 
   server.tool(
     "lookin_get_tap_targets",
     "Tappable views: oid, frame, title, action (control/gesture/cell).",
-    {},
-    async () => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.getTapTargets());
+    { ...appGuardSchema },
+    async ({ expectedBundleId }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.getTapTargets());
+    }
+  );
+
+  server.tool(
+    "lookin_list_text_inputs",
+    "All typeable text inputs: UITextField, UITextView, SwiftUI TextField, UITextInput (oid, frame, text).",
+    { ...appGuardSchema },
+    async ({ expectedBundleId }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.getTextInputs());
     }
   );
 
   server.tool(
     "lookin_get_attributes",
     "Inbuilt attribute groups for a view/layer oid.",
-    { oid: z.number() },
-    async ({ oid }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.getAttributes(oid));
+    { ...appGuardSchema, oid: z.number() },
+    async ({ expectedBundleId, oid }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.getAttributes(oid));
     }
   );
 
@@ -115,16 +249,15 @@ export function registerLookinTools(server, deps) {
     "lookin_modify_attribute",
     "Modify inbuilt attribute (hidden, alpha, colors, etc.).",
     {
+      ...appGuardSchema,
       oid: z.number(),
       setterSelector: z.string().describe("e.g. setHidden:, setAlpha:"),
       attrType: z.number().describe("LKAttrType raw value from get_attributes."),
       value: z.union([z.string(), z.number(), z.boolean(), z.record(z.unknown())]).describe("New value."),
     },
-    async ({ oid, setterSelector, attrType, value }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(
-        await lookinClient.modifyAttribute(oid, { setterSelector, attrType, value })
+    async ({ expectedBundleId, oid, setterSelector, attrType, value }) => {
+      return runGuarded(expectedBundleId, async () =>
+        lookinClient.modifyAttribute(oid, { setterSelector, attrType, value })
       );
     }
   );
@@ -132,10 +265,10 @@ export function registerLookinTools(server, deps) {
   server.tool(
     "lookin_get_screenshot",
     "PNG screenshot of view (oid optional — root window).",
-    { oid: z.number().optional() },
-    async ({ oid }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
+    { ...appGuardSchema, oid: z.number().optional() },
+    async ({ expectedBundleId, oid }) => {
+      const g = await guardApp(expectedBundleId);
+      if (g.blocked) return blockedResult(g.blocked);
       let targetOid = oid;
       if (targetOid === undefined) {
         const hierarchy = await lookinClient.getHierarchy();
@@ -147,10 +280,14 @@ export function registerLookinTools(server, deps) {
       if (!result.imageBase64) {
         return { content: [{ type: "text", text: "Screenshot not available." }] };
       }
+      const warningText =
+        g.appContext?.warning && g.appContext.appChanged
+          ? `\n_appContext: ${g.appContext.warning}`
+          : "";
       return {
         content: [
           { type: "image", data: result.imageBase64, mimeType: result.mimeType ?? "image/png" },
-          { type: "text", text: `Screenshot: ${result.width}×${result.height}px` },
+          { type: "text", text: `Screenshot: ${result.width}×${result.height}px${warningText}` },
         ],
       };
     }
@@ -159,22 +296,18 @@ export function registerLookinTools(server, deps) {
   server.tool(
     "lookin_get_custom_info",
     "Lookin custom attribute groups (LookinCustomInfo API).",
-    { oid: z.number() },
-    async ({ oid }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.getCustomInfo(oid));
+    { ...appGuardSchema, oid: z.number() },
+    async ({ expectedBundleId, oid }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.getCustomInfo(oid));
     }
   );
 
   server.tool(
     "lookin_get_hierarchy_details",
     "Full inspector detail: inbuilt + custom attrs, frame, alpha.",
-    { oid: z.number() },
-    async ({ oid }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.getHierarchyDetails(oid));
+    { ...appGuardSchema, oid: z.number() },
+    async ({ expectedBundleId, oid }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.getHierarchyDetails(oid));
     }
   );
 
@@ -182,13 +315,14 @@ export function registerLookinTools(server, deps) {
     "lookin_get_selectors",
     "Instance method names for a class (invoke_method helper).",
     {
+      ...appGuardSchema,
       className: z.string(),
       hasArg: z.boolean().optional().describe("Methods with arguments (default false)."),
     },
-    async ({ className, hasArg }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.getSelectors({ className, hasArg: hasArg ?? false }));
+    async ({ expectedBundleId, className, hasArg }) => {
+      return runGuarded(expectedBundleId, async () =>
+        lookinClient.getSelectors({ className, hasArg: hasArg ?? false })
+      );
     }
   );
 
@@ -197,20 +331,17 @@ export function registerLookinTools(server, deps) {
     "Search views by class, a11y id/label, title, or text.",
     searchSchema,
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.findView(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.findView(rest));
     }
   );
 
   server.tool(
     "lookin_get_view_at_point",
     "Hit-test: view at window coordinates.",
-    { x: z.number(), y: z.number() },
-    async ({ x, y }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.viewAtPoint({ x, y }));
+    { ...appGuardSchema, x: z.number(), y: z.number() },
+    async ({ expectedBundleId, x, y }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.viewAtPoint({ x, y }));
     }
   );
 
@@ -219,16 +350,14 @@ export function registerLookinTools(server, deps) {
     "Poll find_view until match or timeout.",
     { ...searchSchema, timeout: z.number().optional().describe("Seconds (default 10, max 60).") },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.waitForView(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.waitForView(rest));
     }
   );
 
   server.tool("lookin_tap", "Synthetic tap by oid or x/y.", pointSchema, async (args) => {
-    const blocked = await guard();
-    if (blocked) return blockedResult(blocked);
-    return jsonResult(await lookinClient.tap(args));
+    const { expectedBundleId, rest } = stripExpectedBundleId(args);
+    return runGuarded(expectedBundleId, async () => lookinClient.tap(rest));
   });
 
   server.tool(
@@ -236,9 +365,8 @@ export function registerLookinTools(server, deps) {
     "Find first matching view and tap its center.",
     searchSchema,
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.tapByLabel(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.tapByLabel(rest));
     }
   );
 
@@ -247,9 +375,8 @@ export function registerLookinTools(server, deps) {
     "Double tap by oid or x/y.",
     pointSchema,
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.doubleTap(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.doubleTap(rest));
     }
   );
 
@@ -261,9 +388,8 @@ export function registerLookinTools(server, deps) {
       duration: z.number().optional().describe("Hold seconds (0.2–5, default 0.6)."),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.longPress(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.longPress(rest));
     }
   );
 
@@ -271,6 +397,7 @@ export function registerLookinTools(server, deps) {
     "lookin_swipe",
     "Swipe by oid+direction or from/to coordinates.",
     {
+      ...appGuardSchema,
       oid: oidSchema,
       direction: z.enum(["up", "down", "left", "right"]).optional(),
       fromX: z.number().optional(),
@@ -280,9 +407,8 @@ export function registerLookinTools(server, deps) {
       duration: z.number().optional(),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.swipe(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.swipe(rest));
     }
   );
 
@@ -290,6 +416,7 @@ export function registerLookinTools(server, deps) {
     "lookin_drag",
     "Drag gesture (same as swipe: oid+direction or from/to).",
     {
+      ...appGuardSchema,
       oid: oidSchema,
       direction: z.enum(["up", "down", "left", "right"]).optional(),
       fromX: z.number().optional(),
@@ -299,9 +426,8 @@ export function registerLookinTools(server, deps) {
       duration: z.number().optional(),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.drag(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.drag(rest));
     }
   );
 
@@ -314,9 +440,8 @@ export function registerLookinTools(server, deps) {
       scale: z.number().optional().describe("Scale multiplier (default 1.5 in / 0.67 out)."),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.pinch(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.pinch(rest));
     }
   );
 
@@ -324,6 +449,7 @@ export function registerLookinTools(server, deps) {
     "lookin_scroll",
     "Scroll UIScrollView by oid or point.",
     {
+      ...appGuardSchema,
       oid: oidSchema,
       x: z.number().optional(),
       y: z.number().optional(),
@@ -334,9 +460,8 @@ export function registerLookinTools(server, deps) {
       animated: z.boolean().optional(),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.scroll(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.scroll(rest));
     }
   );
 
@@ -344,14 +469,14 @@ export function registerLookinTools(server, deps) {
     "lookin_toggle",
     "Toggle UISwitch or UISegmentedControl.",
     {
+      ...appGuardSchema,
       oid: z.number(),
       on: z.boolean().optional().describe("UISwitch target state."),
       segment: z.number().optional().describe("UISegmentedControl index."),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.toggle(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.toggle(rest));
     }
   );
 
@@ -359,41 +484,40 @@ export function registerLookinTools(server, deps) {
     "lookin_select_row",
     "Select UITableView/UICollectionView row.",
     {
+      ...appGuardSchema,
       oid: z.number(),
       section: z.number().optional(),
       row: z.number().optional(),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.selectRow(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.selectRow(rest));
     }
   );
 
   server.tool(
     "lookin_type_text",
-    "Type into UITextField/UITextView by oid or focused field.",
+    "Type into UITextField/UITextView/UITextInput by oid or focused field.",
     {
+      ...appGuardSchema,
       text: z.string(),
       oid: oidSchema,
       replace: z.boolean().optional(),
       focus: z.boolean().optional(),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.typeText(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.typeText(rest));
     }
   );
 
   server.tool(
     "lookin_clear_text",
     "Clear text field by oid or focused field.",
-    { oid: oidSchema, focus: z.boolean().optional() },
+    { ...appGuardSchema, oid: oidSchema, focus: z.boolean().optional() },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.clearText(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.clearText(rest));
     }
   );
 
@@ -401,13 +525,13 @@ export function registerLookinTools(server, deps) {
     "lookin_keyboard",
     "Keyboard: dismiss, return, insert, delete (backspace).",
     {
+      ...appGuardSchema,
       action: z.enum(["dismiss", "return", "insert", "delete"]).optional(),
       key: z.string().optional(),
     },
     async (args) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.keyboard(args));
+      const { expectedBundleId, rest } = stripExpectedBundleId(args);
+      return runGuarded(expectedBundleId, async () => lookinClient.keyboard(rest));
     }
   );
 
@@ -415,50 +539,45 @@ export function registerLookinTools(server, deps) {
     "lookin_modify_custom_attr",
     "Modify Lookin custom attribute via customSetterID.",
     {
+      ...appGuardSchema,
       oid: z.number(),
       customSetterID: z.string(),
       attrType: z.number(),
       value: z.union([z.string(), z.number(), z.boolean(), z.record(z.unknown())]).optional(),
     },
-    async ({ oid, customSetterID, attrType, value }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      const body = { customSetterID, attrType };
-      if (value !== undefined) body.value = value;
-      return jsonResult(await lookinClient.modifyCustomAttr(oid, body));
+    async ({ expectedBundleId, oid, customSetterID, attrType, value }) => {
+      return runGuarded(expectedBundleId, async () => {
+        const body = { customSetterID, attrType };
+        if (value !== undefined) body.value = value;
+        return lookinClient.modifyCustomAttr(oid, body);
+      });
     }
   );
 
   server.tool(
     "lookin_invoke_method",
     "Invoke parameterless instance method on object by oid.",
-    { oid: z.number(), selector: z.string().describe("e.g. reloadData") },
-    async ({ oid, selector }) => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.invokeMethod({ oid, selector }));
+    { ...appGuardSchema, oid: z.number(), selector: z.string().describe("e.g. reloadData") },
+    async ({ expectedBundleId, oid, selector }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.invokeMethod({ oid, selector }));
     }
   );
 
   server.tool(
     "lookin_wire_selftest",
     "Wire v2 self-test diagnostics (LookinServer dev).",
-    {},
-    async () => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.wireSelftest());
+    { ...appGuardSchema },
+    async ({ expectedBundleId }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.wireSelftest());
     }
   );
 
   server.tool(
     "lookin_relisten_peertalk",
     "Restart Peertalk listen (mac Lookin client reconnect).",
-    {},
-    async () => {
-      const blocked = await guard();
-      if (blocked) return blockedResult(blocked);
-      return jsonResult(await lookinClient.relistenPeertalk());
+    { ...appGuardSchema },
+    async ({ expectedBundleId }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.relistenPeertalk());
     }
   );
 
@@ -492,12 +611,15 @@ export function registerLookinTools(server, deps) {
         const message = err instanceof Error ? err.message : String(err);
         return jsonResult({ success: false, error: message });
       }
+      appSession.clearExpectedBundleId();
+      appSession.resetTracking();
       try {
         const status = await lookinClient.getStatus();
         return jsonResult({
           success: true,
           target: deviceManager.getActiveTarget(),
           serverStatus: status,
+          activeApp: appSession.activeAppPayload(status),
         });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);

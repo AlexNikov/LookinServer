@@ -51,7 +51,7 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 process.stderr.write(
-  `[lookin-ios-mcp] Server started (LookinServer :47190, ${VIEW_TOOLS.length + 2} tools)\n`
+  `[lookin-ios-mcp] Server started (LookinServer :47190, ${VIEW_TOOLS.length + 5} tools)\n`
 );
 deviceManager.autoConnect().catch(() => {});
 

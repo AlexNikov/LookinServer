@@ -470,5 +470,120 @@ extension MCPHTTPHandler {
         if let control = view as? UIControl { return controlTitle(for: control) }
         return view.accessibilityLabel
     }
+
+    // MARK: - Text inputs
+
+    func isTextInputView(_ view: UIView) -> Bool {
+        if view is UITextField || view is UITextView { return true }
+        guard let responder = view as? UIResponder else { return false }
+        return responder.conforms(to: UITextInput.self)
+    }
+
+    func textInputKind(for view: UIView) -> String {
+        if view is UITextField { return "UITextField" }
+        if view is UITextView { return "UITextView" }
+        let className = NSStringFromClass(type(of: view))
+        if className.contains("TextField") || className.contains("_UITextField") {
+            return "SwiftUITextField"
+        }
+        if className.contains("TextEditor") || className.contains("TextView") {
+            return "SwiftUITextView"
+        }
+        return "UITextInput"
+    }
+
+    func currentTextContent(for view: UIView) -> String? {
+        if let textField = view as? UITextField {
+            return textField.text
+        }
+        if let textView = view as? UITextView {
+            return textView.text
+        }
+        if let textInput = view as? UIResponder & UITextInput {
+            let start = textInput.beginningOfDocument
+            let end = textInput.endOfDocument
+            if let range = textInput.textRange(from: start, to: end) {
+                return textInput.text(in: range)
+            }
+        }
+        return nil
+    }
+
+    func placeholderForTextInput(_ view: UIView) -> String? {
+        if let textField = view as? UITextField {
+            return textField.placeholder
+        }
+        return nil
+    }
+
+    func isEditableTextInput(_ view: UIView) -> Bool {
+        if let textField = view as? UITextField {
+            return textField.isEnabled
+        }
+        if let textView = view as? UITextView {
+            return textView.isEditable
+        }
+        return true
+    }
+
+    func isCollectibleTextInputView(_ view: UIView) -> Bool {
+        guard isTextInputView(view) else { return false }
+        if view.isHidden || view.alpha < 0.05 { return false }
+        let bounds = view.bounds
+        if bounds.width < 4 || bounds.height < 4 { return false }
+        var ancestor: UIView? = view.superview
+        while let current = ancestor {
+            if current.isHidden || current.alpha < 0.05 {
+                return false
+            }
+            ancestor = current.superview
+        }
+        return true
+    }
+
+    func collectTextInputs(
+        in view: UIView,
+        window: UIWindow,
+        inputs: inout [[String: Any]],
+        maxResults: Int
+    ) {
+        if inputs.count >= maxResults { return }
+        if isCollectibleTextInputView(view), let summary = textInputSummary(for: view, window: window) {
+            inputs.append(summary)
+        }
+        for subview in view.subviews {
+            collectTextInputs(in: subview, window: window, inputs: &inputs, maxResults: maxResults)
+            if inputs.count >= maxResults { return }
+        }
+    }
+
+    func textInputSummary(for view: UIView, window: UIWindow) -> [String: Any]? {
+        guard isTextInputView(view) else { return nil }
+        let frame = view.convert(view.bounds, to: window)
+        var dict: [String: Any] = [
+            "oid": view.lks_registerOid(),
+            "className": NSStringFromClass(type(of: view)),
+            "inputKind": textInputKind(for: view),
+            "text": currentTextContent(for: view) ?? "",
+            "isFirstResponder": view.isFirstResponder,
+            "isEditable": isEditableTextInput(view),
+            "frame": [
+                "x": frame.origin.x,
+                "y": frame.origin.y,
+                "width": frame.size.width,
+                "height": frame.size.height,
+            ],
+        ]
+        if let placeholder = placeholderForTextInput(view), !placeholder.isEmpty {
+            dict["placeholder"] = placeholder
+        }
+        if let label = view.accessibilityLabel, !label.isEmpty {
+            dict["accessibilityLabel"] = label
+        }
+        if let identifier = view.accessibilityIdentifier, !identifier.isEmpty {
+            dict["accessibilityIdentifier"] = identifier
+        }
+        return dict
+    }
 }
 #endif

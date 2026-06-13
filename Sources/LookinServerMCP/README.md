@@ -17,12 +17,13 @@ HTTP API **не** подключается к AI-агенту напрямую. 
 | GET | `/status` | App name, bundle id, screen metrics, Peertalk state |
 | GET | `/hierarchy` | View/layer tree |
 | GET | `/tap-targets` | Tappable views (oid, frame, title) |
+| GET | `/text-inputs` | Typeable text inputs (UITextField, UITextView, UITextInput) |
 | GET | `/view/:oid/attributes` | Attribute groups |
 | POST | `/view/:oid/attributes` | Modify attribute |
 | GET | `/view/:oid/screenshot` | PNG base64 |
 | POST | `/tap` | Synthetic tap by `oid` or `x`+`y` |
 | POST | `/swipe` | Synthetic swipe by `oid`+`direction` or coordinates |
-| POST | `/type-text` | Type into `UITextField`/`UITextView` by `oid` or focused field |
+| POST | `/type-text` | Type into `UITextField`/`UITextView`/`UITextInput` by `oid` or focused field |
 | POST | `/keyboard` | Keyboard: `dismiss`, `return`, `insert`, `delete` |
 | POST | `/long-press` | Long press by `oid` or `x`+`y`, optional `duration` (0.2–5s) |
 | POST | `/find-view` | Search views by class, a11y, title, text |

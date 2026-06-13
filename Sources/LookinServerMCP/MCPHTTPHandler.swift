@@ -16,6 +16,8 @@ final class MCPHTTPHandler {
             return handleHierarchy()
         case ("GET", "/tap-targets"):
             return handleTapTargets()
+        case ("GET", "/text-inputs"):
+            return handleTextInputs()
         case ("GET", "/wire-roundtrip"):
             return handleWireRoundtrip()
         case ("GET", "/wire-v2-selftest"):
@@ -438,6 +440,17 @@ final class MCPHTTPHandler {
         ])
     }
 
+    // MARK: - GET /text-inputs
+
+    private func handleTextInputs() -> MCPHTTPResponse {
+        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
+            return .error(message: "No key window found", statusCode: 503)
+        }
+        var inputs: [[String: Any]] = []
+        collectTextInputs(in: keyWindow, window: keyWindow, inputs: &inputs, maxResults: 100)
+        return .ok(data: ["count": inputs.count, "inputs": inputs])
+    }
+
     // MARK: - GET /tap-targets
 
     private func handleTapTargets() -> MCPHTTPResponse {
@@ -791,7 +804,7 @@ final class MCPHTTPHandler {
             let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
             inputView = textInputView(forOid: oid)
             if inputView == nil {
-                return .error(message: "No UITextField/UITextView found for oid \(oid)", statusCode: 404)
+                return .error(message: "No text input found for oid \(oid)", statusCode: 404)
             }
         } else {
             inputView = firstResponderTextInput()
@@ -829,6 +842,27 @@ final class MCPHTTPHandler {
                 "typed": true,
                 "text": newText,
                 "className": NSStringFromClass(type(of: textView)),
+            ])
+        }
+
+        if let textInput = input as? UIResponder & UITextInput {
+            let newText: String
+            if replace {
+                let start = textInput.beginningOfDocument
+                let end = textInput.endOfDocument
+                if let range = textInput.textRange(from: start, to: end) {
+                    textInput.replace(range, withText: text)
+                }
+                newText = text
+            } else {
+                textInput.insertText(text)
+                newText = currentTextContent(for: input) ?? text
+            }
+            NSLog("LookinServer MCP - typeText UITextInput %@", NSStringFromClass(type(of: input)))
+            return .ok(data: [
+                "typed": true,
+                "text": newText,
+                "className": NSStringFromClass(type(of: input)),
             ])
         }
 
@@ -947,12 +981,12 @@ final class MCPHTTPHandler {
 
     private func textInputView(forOid oid: UInt) -> UIView? {
         guard let view = view(forOid: oid) else { return nil }
-        if view is UITextField || view is UITextView { return view }
+        if isTextInputView(view) { return view }
         return findTextInput(in: view)
     }
 
     private func findTextInput(in view: UIView) -> UIView? {
-        if view is UITextField || view is UITextView { return view }
+        if isTextInputView(view) { return view }
         for subview in view.subviews {
             if let found = findTextInput(in: subview) { return found }
         }
@@ -965,7 +999,7 @@ final class MCPHTTPHandler {
     }
 
     private func findFirstResponderTextInput(in view: UIView) -> UIView? {
-        if view.isFirstResponder && (view is UITextField || view is UITextView) {
+        if view.isFirstResponder && isTextInputView(view) {
             return view
         }
         for subview in view.subviews {

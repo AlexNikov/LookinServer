@@ -75,10 +75,15 @@ qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project
 
 Проверка: `/mcp list` → `lookin-ios` connected.
 
-## MCP tools (31)
+## MCP tools (35)
+
+### App context
+`lookin_get_active_app`, `lookin_set_expected_app`, `lookin_clear_expected_app`
+
+All view tools accept optional `expectedBundleId` and attach `_appContext.warning` when the foreground app changed since the last call.
 
 ### Inspect
-`lookin_get_hierarchy`, `lookin_get_status`, `lookin_get_tap_targets`, `lookin_get_attributes`, `lookin_modify_attribute`, `lookin_get_screenshot`, `lookin_get_custom_info`, `lookin_get_hierarchy_details`, `lookin_get_selectors`, `lookin_find_view`, `lookin_get_view_at_point`, `lookin_wait_for_view`
+`lookin_get_hierarchy`, `lookin_get_status`, `lookin_get_tap_targets`, `lookin_list_text_inputs`, `lookin_get_attributes`, `lookin_modify_attribute`, `lookin_get_screenshot`, `lookin_get_custom_info`, `lookin_get_hierarchy_details`, `lookin_get_selectors`, `lookin_find_view`, `lookin_get_view_at_point`, `lookin_wait_for_view`
 
 ### Gestures / input
 `lookin_tap`, `lookin_tap_by_label`, `lookin_double_tap`, `lookin_long_press`, `lookin_swipe`, `lookin_drag`, `lookin_pinch`, `lookin_scroll`, `lookin_toggle`, `lookin_select_row`, `lookin_type_text`, `lookin_clear_text`, `lookin_keyboard`

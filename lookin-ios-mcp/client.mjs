@@ -55,6 +55,9 @@ export const lookinClient = {
   getTapTargets() {
     return request("GET", "/tap-targets");
   },
+  getTextInputs() {
+    return request("GET", "/text-inputs");
+  },
   getAttributes(oid) {
     return request("GET", `/view/${oid}/attributes`);
   },
