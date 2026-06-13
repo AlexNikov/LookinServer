@@ -75,26 +75,26 @@ qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project
 
 Проверка: `/mcp list` → `lookin-ios` connected.
 
-## MCP tools (10)
+## MCP tools (31)
 
-| Tool | Назначение |
-|------|------------|
-| `lookin_get_hierarchy` | Дерево UI |
-| `lookin_get_attributes` | Атрибуты view |
-| `lookin_get_screenshot` | PNG скриншот |
-| `lookin_tap` | Синтетический тап |
-| `lookin_swipe` | Синтетический свайп |
-| `lookin_type_text` | Ввод текста в поле |
-| `lookin_keyboard` | Клавиатура: dismiss / return / insert |
-| `lookin_long_press` | Долгое нажатие |
-| `lookin_list_devices` | USB + simulators |
-| `lookin_connect_device` | Выбор sim / USB |
+### Inspect
+`lookin_get_hierarchy`, `lookin_get_status`, `lookin_get_tap_targets`, `lookin_get_attributes`, `lookin_modify_attribute`, `lookin_get_screenshot`, `lookin_get_custom_info`, `lookin_get_hierarchy_details`, `lookin_get_selectors`, `lookin_find_view`, `lookin_get_view_at_point`, `lookin_wait_for_view`
+
+### Gestures / input
+`lookin_tap`, `lookin_tap_by_label`, `lookin_double_tap`, `lookin_long_press`, `lookin_swipe`, `lookin_drag`, `lookin_pinch`, `lookin_scroll`, `lookin_toggle`, `lookin_select_row`, `lookin_type_text`, `lookin_clear_text`, `lookin_keyboard`
+
+### Runtime / dev
+`lookin_modify_custom_attr`, `lookin_invoke_method`, `lookin_wire_selftest`, `lookin_relisten_peertalk`
+
+### Device
+`lookin_list_devices`, `lookin_connect_device`
 
 ## Файлы
 
 | Файл | Назначение |
 |------|------------|
-| `index.mjs` | MCP server (tools) |
+| `index.mjs` | MCP server bootstrap |
+| `register-tools.mjs` | MCP tool definitions |
 | `client.mjs` | HTTP → `:47190` |
 | `device-manager.mjs` | USB iproxy / simulator |
 | `usbmuxd.mjs` | usbmuxd на Mac |

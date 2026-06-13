@@ -71,6 +71,70 @@ final class MCPHTTPHandler {
                 return await handleLongPress(body: request.jsonBody)
             }
 
+            if request.method == "POST", request.path == "/find-view" {
+                return handleFindView(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/view-at-point" {
+                return handleViewAtPoint(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/tap-by-label" {
+                return handleTapByLabel(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/wait-for-view" {
+                return await handleWaitForView(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/double-tap" {
+                return await handleDoubleTap(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/drag" {
+                return await handleSwipe(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/pinch" {
+                return handlePinch(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/scroll" {
+                return handleScroll(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/toggle" {
+                return handleToggle(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/select-row" {
+                return handleSelectRow(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/clear-text" {
+                return handleClearText(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/invoke-method" {
+                return handleInvokeMethod(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/selectors" {
+                return handleSelectors(body: request.jsonBody)
+            }
+
+            if request.oidParam > 0, request.method == "GET", request.path.hasSuffix("/custom-info") {
+                return handleCustomInfo(oid: request.oidParam)
+            }
+
+            if request.oidParam > 0, request.method == "GET", request.path.hasSuffix("/hierarchy-details") {
+                return handleHierarchyDetails(oid: request.oidParam)
+            }
+
+            if request.oidParam > 0, request.method == "POST", request.path.hasSuffix("/custom-attributes") {
+                return handleModifyCustomAttribute(oid: request.oidParam, body: request.jsonBody)
+            }
+
             return .error(message: "Not found", statusCode: 404)
         }
     }
@@ -294,7 +358,7 @@ final class MCPHTTPHandler {
         return .ok(data: ["oid": oid, "groups": groupsJSON])
     }
 
-    private func serialize(attribute: LKAttribute) -> [String: Any]? {
+    func serialize(attribute: LKAttribute) -> [String: Any]? {
         guard let identifier = attribute.identifier else { return nil }
 
         var dict: [String: Any] = [
@@ -509,7 +573,7 @@ final class MCPHTTPHandler {
         }.count
     }
 
-    private func controlTitle(for control: UIControl) -> String? {
+    func controlTitle(for control: UIControl) -> String? {
         if let button = control as? UIButton {
             if let title = button.currentTitle, !title.isEmpty {
                 return title
@@ -527,7 +591,7 @@ final class MCPHTTPHandler {
 
     // MARK: - POST /tap
 
-    private func handleTap(body: [String: Any]?) -> MCPHTTPResponse {
+    func handleTap(body: [String: Any]?) -> MCPHTTPResponse {
         var tapPoint: CGPoint?
 
         // Priority 1: tap by oid
@@ -690,7 +754,7 @@ final class MCPHTTPHandler {
         ])
     }
 
-    private func sendSyntheticTap(at point: CGPoint, in window: UIWindow) -> Bool {
+    func sendSyntheticTap(at point: CGPoint, in window: UIWindow) -> Bool {
         let hitView = window.hitTest(point, with: nil)
 
         // Path 1: UIControl
@@ -729,7 +793,7 @@ final class MCPHTTPHandler {
 
     // MARK: - POST /type-text
 
-    private func handleTypeText(body: [String: Any]?) -> MCPHTTPResponse {
+    func handleTypeText(body: [String: Any]?) -> MCPHTTPResponse {
         guard let text = body?["text"] as? String, !text.isEmpty else {
             return .error(message: "Provide non-empty 'text'", statusCode: 400)
         }
@@ -825,9 +889,17 @@ final class MCPHTTPHandler {
             NSLog("LookinServer MCP - keyboard insert len=%lu", key.count)
             return .ok(data: ["keyboard": true, "action": "insert", "inserted": key])
 
+        case "delete":
+            guard let input = firstResponderTextInput() as? UIResponder & UITextInput else {
+                return .error(message: "No focused text input for delete", statusCode: 400)
+            }
+            input.deleteBackward()
+            NSLog("LookinServer MCP - keyboard delete")
+            return .ok(data: ["keyboard": true, "action": "delete"])
+
         default:
             return .error(
-                message: "Unknown action '\(action)'. Use dismiss, return, or insert",
+                message: "Unknown action '\(action)'. Use dismiss, return, insert, or delete",
                 statusCode: 400
             )
         }
@@ -857,14 +929,14 @@ final class MCPHTTPHandler {
         return .error(message: "Failed to synthesize long press", statusCode: 500)
     }
 
-    private func view(forOid oid: UInt) -> UIView? {
+    func view(forOid oid: UInt) -> UIView? {
         guard let obj = NSObject.lks_object(withOid: oid) else { return nil }
         if let v = obj as? UIView { return v }
         if let l = obj as? CALayer { return l.lks_hostView }
         return nil
     }
 
-    private func doubleValue(from value: Any?) -> Double? {
+    func doubleValue(from value: Any?) -> Double? {
         if let v = value as? Double { return v }
         if let v = value as? Int { return Double(v) }
         if let v = value as? NSNumber { return v.doubleValue }
@@ -872,7 +944,7 @@ final class MCPHTTPHandler {
         return nil
     }
 
-    private func resolveWindowPoint(from body: [String: Any]?) -> CGPoint? {
+    func resolveWindowPoint(from body: [String: Any]?) -> CGPoint? {
         guard let body else { return nil }
         if let oidValue = body["oid"], !(oidValue is NSNull) {
             let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
@@ -917,7 +989,7 @@ final class MCPHTTPHandler {
         return nil
     }
 
-    private func sendSyntheticLongPress(at point: CGPoint, in window: UIWindow, duration: TimeInterval) async -> Bool {
+    func sendSyntheticLongPress(at point: CGPoint, in window: UIWindow, duration: TimeInterval) async -> Bool {
         let hitView = window.hitTest(point, with: nil)
         let setSel = NSSelectorFromString("setState:")
 

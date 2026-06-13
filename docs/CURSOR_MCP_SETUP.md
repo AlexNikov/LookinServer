@@ -152,30 +152,30 @@ cd .cursor/lookin-verify-mcp && npm install
 
 Типичный workflow:
 
-1. `lookin_get_hierarchy` — дерево UI, найти `oid`
-2. `lookin_get_attributes` — атрибуты view
+1. `lookin_get_hierarchy` / `lookin_get_tap_targets` / `lookin_find_view` — найти `oid`
+2. `lookin_get_attributes` / `lookin_get_custom_info` — атрибуты
 3. `lookin_get_screenshot` — скриншот
-4. `lookin_tap` / `lookin_swipe` / `lookin_long_press` — синтетические жесты
-5. `lookin_type_text` / `lookin_keyboard` — текст и клавиатура
+4. Жесты: `lookin_tap`, `lookin_tap_by_label`, `lookin_swipe`, `lookin_long_press`, `lookin_pinch`, `lookin_scroll`, …
+5. Текст: `lookin_type_text`, `lookin_keyboard`, `lookin_clear_text`
+
+**31 MCP tool** — полный список: [lookin-ios-mcp/README.md](../lookin-ios-mcp/README.md).
 
 ---
 
-## MCP tools ↔ HTTP endpoints
+## MCP tools ↔ HTTP (основные)
 
-| MCP tool | HTTP | Параметры |
-|----------|------|-----------|
-| `lookin_get_hierarchy` | `GET /hierarchy` | `maxDepth?` |
-| `lookin_get_attributes` | `GET /view/:oid/attributes` | `oid` |
-| `lookin_get_screenshot` | `GET /view/:oid/screenshot` | `oid?` (без oid — root window) |
-| `lookin_tap` | `POST /tap` | `oid?` или `x` + `y` |
-| `lookin_swipe` | `POST /swipe` | `oid?` + `direction?` или `fromX/Y` + `toX/Y`, `duration?` |
-| `lookin_type_text` | `POST /type-text` | `text`, `oid?`, `replace?`, `focus?` |
-| `lookin_keyboard` | `POST /keyboard` | `action?` (`dismiss`/`return`/`insert`), `key?` |
-| `lookin_long_press` | `POST /long-press` | `oid?` или `x` + `y`, `duration?` (0.2–5s) |
-| `lookin_list_devices` | — (Mac: simctl + usbmuxd) | — |
-| `lookin_connect_device` | — (Mac: iproxy :47191→device:47190) | `target` (UDID или `simulator`) |
+| MCP tool | HTTP |
+|----------|------|
+| `lookin_get_status` | `GET /status` |
+| `lookin_get_tap_targets` | `GET /tap-targets` |
+| `lookin_find_view` | `POST /find-view` |
+| `lookin_modify_attribute` | `POST /view/:oid/attributes` |
+| `lookin_get_custom_info` | `GET /view/:oid/custom-info` |
+| `lookin_invoke_method` | `POST /invoke-method` |
+| `lookin_list_devices` | — (Mac) |
+| `lookin_connect_device` | — (Mac iproxy) |
 
-Полный список HTTP routes LookinServer — в [Sources/LookinServerMCP/README.md](../Sources/LookinServerMCP/README.md).
+Полная таблица HTTP routes — [Sources/LookinServerMCP/README.md](../Sources/LookinServerMCP/README.md).
 
 ---
 

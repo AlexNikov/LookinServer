@@ -2,7 +2,7 @@
 
 Swift HTTP server в iOS debug-приложении: `127.0.0.1:47190`.
 
-Реализация: `MCPHTTPServer.swift`, `MCPHTTPHandler.swift`, `MCPHTTPModels.swift`. Старт из `LKS_ConnectionManager` через `NSClassFromString("LKS_MCPHTTPServer")`.
+Реализация: `MCPHTTPServer.swift`, `MCPHTTPHandler.swift`, `MCPHTTPExtendedHandlers.swift`, `MCPHTTPModels.swift`.
 
 ## Cursor / AI agents
 
@@ -23,8 +23,24 @@ HTTP API **не** подключается к AI-агенту напрямую. 
 | POST | `/tap` | Synthetic tap by `oid` or `x`+`y` |
 | POST | `/swipe` | Synthetic swipe by `oid`+`direction` or coordinates |
 | POST | `/type-text` | Type into `UITextField`/`UITextView` by `oid` or focused field |
-| POST | `/keyboard` | Keyboard: `dismiss`, `return`, or `insert` (`key`) |
+| POST | `/keyboard` | Keyboard: `dismiss`, `return`, `insert`, `delete` |
 | POST | `/long-press` | Long press by `oid` or `x`+`y`, optional `duration` (0.2–5s) |
+| POST | `/find-view` | Search views by class, a11y, title, text |
+| POST | `/view-at-point` | Hit-test at `x`+`y` |
+| POST | `/tap-by-label` | Find view + tap center |
+| POST | `/wait-for-view` | Poll `find-view` until match or timeout |
+| POST | `/double-tap` | Double tap by `oid` or `x`+`y` |
+| POST | `/drag` | Drag (alias of swipe) |
+| POST | `/pinch` | Pinch zoom (`direction` in/out, optional `scale`) |
+| POST | `/scroll` | Scroll `UIScrollView` by oid or point |
+| POST | `/toggle` | `UISwitch` / `UISegmentedControl` |
+| POST | `/select-row` | `UITableView` / `UICollectionView` row |
+| POST | `/clear-text` | Clear text field |
+| GET | `/view/:oid/custom-info` | Lookin custom attribute groups |
+| GET | `/view/:oid/hierarchy-details` | Full inspector detail |
+| POST | `/view/:oid/custom-attributes` | Modify custom attribute |
+| POST | `/invoke-method` | Invoke parameterless selector on oid |
+| POST | `/selectors` | List instance methods for class |
 | GET | `/wire-roundtrip` | Wire v2 diagnostics |
 | GET | `/wire-v2-selftest` | Wire v2 self-test |
 | POST | `/relisten-peertalk` | Restart Peertalk listen (mac client reconnect) |

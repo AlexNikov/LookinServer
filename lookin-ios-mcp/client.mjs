@@ -3,6 +3,8 @@ import { deviceManager } from "./device-manager.mjs";
 const REQUEST_TIMEOUT_MS = 15_000;
 const SWIPE_TIMEOUT_MS = 20_000;
 const LONG_PRESS_TIMEOUT_MS = 25_000;
+const WAIT_TIMEOUT_MS = 65_000;
+const WIRE_SELFTEST_TIMEOUT_MS = 30_000;
 
 async function request(method, path, body, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -50,11 +52,26 @@ export const lookinClient = {
   getHierarchy() {
     return request("GET", "/hierarchy");
   },
+  getTapTargets() {
+    return request("GET", "/tap-targets");
+  },
   getAttributes(oid) {
     return request("GET", `/view/${oid}/attributes`);
   },
+  modifyAttribute(oid, body) {
+    return request("POST", `/view/${oid}/attributes`, body);
+  },
   getScreenshot(oid) {
     return request("GET", `/view/${oid}/screenshot`);
+  },
+  getCustomInfo(oid) {
+    return request("GET", `/view/${oid}/custom-info`);
+  },
+  getHierarchyDetails(oid) {
+    return request("GET", `/view/${oid}/hierarchy-details`);
+  },
+  modifyCustomAttr(oid, body) {
+    return request("POST", `/view/${oid}/custom-attributes`, body);
   },
   tap(body) {
     return request("POST", "/tap", body);
@@ -62,13 +79,58 @@ export const lookinClient = {
   swipe(body) {
     return request("POST", "/swipe", body, SWIPE_TIMEOUT_MS);
   },
+  drag(body) {
+    return request("POST", "/drag", body, SWIPE_TIMEOUT_MS);
+  },
   typeText(body) {
     return request("POST", "/type-text", body);
+  },
+  clearText(body) {
+    return request("POST", "/clear-text", body);
   },
   keyboard(body) {
     return request("POST", "/keyboard", body);
   },
   longPress(body) {
     return request("POST", "/long-press", body, LONG_PRESS_TIMEOUT_MS);
+  },
+  doubleTap(body) {
+    return request("POST", "/double-tap", body);
+  },
+  pinch(body) {
+    return request("POST", "/pinch", body);
+  },
+  scroll(body) {
+    return request("POST", "/scroll", body);
+  },
+  toggle(body) {
+    return request("POST", "/toggle", body);
+  },
+  selectRow(body) {
+    return request("POST", "/select-row", body);
+  },
+  findView(body) {
+    return request("POST", "/find-view", body);
+  },
+  viewAtPoint(body) {
+    return request("POST", "/view-at-point", body);
+  },
+  tapByLabel(body) {
+    return request("POST", "/tap-by-label", body);
+  },
+  waitForView(body) {
+    return request("POST", "/wait-for-view", body, WAIT_TIMEOUT_MS);
+  },
+  invokeMethod(body) {
+    return request("POST", "/invoke-method", body);
+  },
+  getSelectors(body) {
+    return request("POST", "/selectors", body);
+  },
+  wireSelftest() {
+    return request("GET", "/wire-v2-selftest", undefined, WIRE_SELFTEST_TIMEOUT_MS);
+  },
+  relistenPeertalk() {
+    return request("POST", "/relisten-peertalk");
   },
 };
