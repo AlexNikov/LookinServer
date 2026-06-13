@@ -267,7 +267,7 @@ extension MCPHTTPHandler {
         let maker = LKS_CustomAttrGroupsMaker(layer: layer)
         maker.execute()
         let custom = (maker.getGroups() as NSArray?) as? [LookinAttributesGroup] ?? []
-        return .ok(data: [
+        var data: [String: Any] = [
             "oid": oid,
             "frame": ["x": layer.frame.origin.x, "y": layer.frame.origin.y,
                       "width": layer.frame.width, "height": layer.frame.height],
@@ -276,7 +276,58 @@ extension MCPHTTPHandler {
             "attributesGroupList": serializeAttrGroups(inbuilt),
             "customAttrGroupList": serializeAttrGroups(custom),
             "customDisplayTitle": maker.getCustomDisplayTitle() ?? "",
-        ])
+        ]
+        if let obj = NSObject.lks_object(withOid: oid) {
+            data["className"] = NSStringFromClass(type(of: obj))
+            if let view = obj as? UIView {
+                data.merge(mcpViewInteractionFields(for: view)) { _, new in new }
+            } else {
+                data["enabled"] = true
+            }
+        }
+        return .ok(data: data)
+    }
+
+    func handleAllProperties(oid: UInt) -> MCPHTTPResponse {
+        guard let obj = NSObject.lks_object(withOid: oid) else {
+            return .error(message: "Object with oid \(oid) not found or already released", statusCode: 404)
+        }
+        guard let layer = layer(forOid: oid) else {
+            return .error(message: "Object is not a UIView or CALayer", statusCode: 400)
+        }
+
+        let inbuilt = LKS_AttrGroupsMaker.attrGroups(for: layer) ?? []
+        let maker = LKS_CustomAttrGroupsMaker(layer: layer)
+        maker.execute()
+        let custom = (maker.getGroups() as NSArray?) as? [LookinAttributesGroup] ?? []
+        let inbuiltGroups = serializeAttrGroups(inbuilt)
+        let customGroups = serializeAttrGroups(custom)
+
+        var data: [String: Any] = [
+            "oid": oid,
+            "className": NSStringFromClass(type(of: obj)),
+            "frame": [
+                "x": layer.frame.origin.x,
+                "y": layer.frame.origin.y,
+                "width": layer.frame.width,
+                "height": layer.frame.height,
+            ],
+            "hidden": layer.isHidden,
+            "alpha": layer.opacity,
+            "inbuiltGroups": inbuiltGroups,
+            "customGroups": customGroups,
+            "customDisplayTitle": maker.getCustomDisplayTitle() ?? "",
+            "allAttributes": flattenSerializedAttributes(
+                inbuiltGroups: inbuiltGroups,
+                customGroups: customGroups
+            ),
+        ]
+        if let view = obj as? UIView {
+            data.merge(mcpViewInteractionFields(for: view)) { _, new in new }
+        } else {
+            data["enabled"] = true
+        }
+        return .ok(data: data)
     }
 
     func handleModifyCustomAttribute(oid: UInt, body: [String: Any]?) -> MCPHTTPResponse {
@@ -354,6 +405,76 @@ extension MCPHTTPHandler {
     }
 
     // MARK: - Helpers
+
+    func mcpEnabled(for view: UIView) -> Bool {
+        (view as? UIControl)?.isEnabled ?? true
+    }
+
+    func mcpViewInteractionFields(for view: UIView) -> [String: Any] {
+        [
+            "enabled": mcpEnabled(for: view),
+            "userInteractionEnabled": view.isUserInteractionEnabled,
+            "isControl": view is UIControl,
+            "gestureRecognizerCount": view.gestureRecognizers?.count ?? 0,
+        ]
+    }
+
+    func mcpAttributeMetaFields(for attribute: LKAttribute) -> [String: Any] {
+        var fields: [String: Any] = [:]
+        if attribute.isUserCustom() || !(attribute.customSetterID ?? "").isEmpty {
+            let customSetterID = attribute.customSetterID ?? ""
+            fields["enabled"] = !customSetterID.isEmpty
+            if !customSetterID.isEmpty {
+                fields["customSetterID"] = customSetterID
+            }
+            fields["source"] = "custom"
+        } else if let identifier = attribute.identifier {
+            if let setter = LookinDashboardBlueprint.setter(withAttrID: identifier) {
+                fields["enabled"] = true
+                fields["setterSelector"] = NSStringFromSelector(setter)
+            } else {
+                fields["enabled"] = false
+            }
+            fields["source"] = "inbuilt"
+        } else {
+            fields["enabled"] = false
+            fields["source"] = "inbuilt"
+        }
+        return fields
+    }
+
+    func flattenSerializedAttributes(
+        inbuiltGroups: [[String: Any]],
+        customGroups: [[String: Any]]
+    ) -> [[String: Any]] {
+        var flat: [[String: Any]] = []
+        appendSerializedAttributes(from: inbuiltGroups, source: "inbuilt", into: &flat)
+        appendSerializedAttributes(from: customGroups, source: "custom", into: &flat)
+        return flat
+    }
+
+    private func appendSerializedAttributes(
+        from groups: [[String: Any]],
+        source: String,
+        into flat: inout [[String: Any]]
+    ) {
+        for group in groups {
+            let groupIdentifier = group["identifier"] as? String ?? ""
+            let groupTitle = group["title"] as? String ?? ""
+            guard let sections = group["sections"] as? [[String: Any]] else { continue }
+            for section in sections {
+                let sectionIdentifier = section["identifier"] as? String ?? ""
+                guard let attributes = section["attributes"] as? [[String: Any]] else { continue }
+                for var attribute in attributes {
+                    attribute["source"] = source
+                    attribute["groupIdentifier"] = groupIdentifier
+                    attribute["groupTitle"] = groupTitle
+                    attribute["sectionIdentifier"] = sectionIdentifier
+                    flat.append(attribute)
+                }
+            }
+        }
+    }
 
     func layer(forOid oid: UInt) -> CALayer? {
         guard let obj = NSObject.lks_object(withOid: oid) else { return nil }
@@ -460,6 +581,7 @@ extension MCPHTTPHandler {
             "frame": ["x": frame.origin.x, "y": frame.origin.y,
                       "width": frame.size.width, "height": frame.size.height],
         ]
+        dict.merge(mcpViewInteractionFields(for: view)) { _, new in new }
         if let label = view.accessibilityLabel, !label.isEmpty { dict["accessibilityLabel"] = label }
         if let id = view.accessibilityIdentifier, !id.isEmpty { dict["accessibilityIdentifier"] = id }
         if let title = controlTitle(for: view), !title.isEmpty { dict["title"] = title }
@@ -567,6 +689,7 @@ extension MCPHTTPHandler {
             "text": currentTextContent(for: view) ?? "",
             "isFirstResponder": view.isFirstResponder,
             "isEditable": isEditableTextInput(view),
+            "enabled": mcpEnabled(for: view),
             "frame": [
                 "x": frame.origin.x,
                 "y": frame.origin.y,

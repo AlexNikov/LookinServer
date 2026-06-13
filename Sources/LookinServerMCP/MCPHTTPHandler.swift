@@ -118,6 +118,10 @@ final class MCPHTTPHandler {
                 return handleHierarchyDetails(oid: request.oidParam)
             }
 
+            if request.oidParam > 0, request.method == "GET", request.path.hasSuffix("/properties") {
+                return handleAllProperties(oid: request.oidParam)
+            }
+
             if request.oidParam > 0, request.method == "POST", request.path.hasSuffix("/custom-attributes") {
                 return handleModifyCustomAttribute(oid: request.oidParam, body: request.jsonBody)
             }
@@ -296,9 +300,9 @@ final class MCPHTTPHandler {
 
         if let viewObject = item.viewObject,
            let view = NSObject.lks_object(withOid: viewObject.oid) as? UIView {
-            dict["userInteractionEnabled"] = view.isUserInteractionEnabled
-            dict["isControl"] = view is UIControl
-            dict["gestureRecognizerCount"] = view.gestureRecognizers?.count ?? 0
+            dict.merge(mcpViewInteractionFields(for: view)) { _, new in new }
+        } else {
+            dict["enabled"] = true
         }
 
         let children = (item.subitems ?? []).map { serialize(item: $0) }
@@ -358,6 +362,7 @@ final class MCPHTTPHandler {
         if let title = attribute.displayTitle, !title.isEmpty {
             dict["displayTitle"] = title
         }
+        dict.merge(mcpAttributeMetaFields(for: attribute)) { _, new in new }
         return dict
     }
 
@@ -536,6 +541,7 @@ final class MCPHTTPHandler {
                 "height": frame.size.height,
             ],
         ]
+        dict.merge(mcpViewInteractionFields(for: view)) { _, new in new }
         if let label = view.accessibilityLabel, !label.isEmpty {
             dict["accessibilityLabel"] = label
         }

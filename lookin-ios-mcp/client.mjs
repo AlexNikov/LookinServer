@@ -61,6 +61,9 @@ export const lookinClient = {
   getAttributes(oid) {
     return request("GET", `/view/${oid}/attributes`);
   },
+  getAllProperties(oid) {
+    return request("GET", `/view/${oid}/properties`);
+  },
   modifyAttribute(oid, body) {
     return request("POST", `/view/${oid}/attributes`, body);
   },

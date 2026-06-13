@@ -94,6 +94,7 @@ export const VIEW_TOOLS = [
   "lookin_get_tap_targets",
   "lookin_list_text_inputs",
   "lookin_get_attributes",
+  "lookin_get_all_properties",
   "lookin_modify_attribute",
   "lookin_get_screenshot",
   "lookin_get_custom_info",
@@ -153,7 +154,7 @@ export function registerLookinTools(server, deps) {
 
   server.tool(
     "lookin_get_hierarchy",
-    "UI view hierarchy tree (oid, className, frame).",
+    "UI view hierarchy tree (oid, className, frame, enabled).",
     {
       ...appGuardSchema,
       includeSystemViews: z.boolean().optional(),
@@ -220,7 +221,7 @@ export function registerLookinTools(server, deps) {
 
   server.tool(
     "lookin_get_tap_targets",
-    "Tappable views: oid, frame, title, action (control/gesture/cell).",
+    "Tappable views: oid, frame, enabled, title, action (control/gesture/cell).",
     { ...appGuardSchema },
     async ({ expectedBundleId }) => {
       return runGuarded(expectedBundleId, async () => lookinClient.getTapTargets());
@@ -238,10 +239,19 @@ export function registerLookinTools(server, deps) {
 
   server.tool(
     "lookin_get_attributes",
-    "Inbuilt attribute groups for a view/layer oid.",
+    "Inbuilt attribute groups for a view/layer oid (each attribute includes enabled + setterSelector when modifiable).",
     { ...appGuardSchema, oid: z.number() },
     async ({ expectedBundleId, oid }) => {
       return runGuarded(expectedBundleId, async () => lookinClient.getAttributes(oid));
+    }
+  );
+
+  server.tool(
+    "lookin_get_all_properties",
+    "All inspector properties for oid: view state, inbuilt + custom attribute groups, flat allAttributes list.",
+    { ...appGuardSchema, oid: z.number() },
+    async ({ expectedBundleId, oid }) => {
+      return runGuarded(expectedBundleId, async () => lookinClient.getAllProperties(oid));
     }
   );
 
