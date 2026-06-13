@@ -1,6 +1,6 @@
 # LookinMCPSample
 
-Minimal UIKit app for LookinServer MCP smoke tests (label, button, colored view).
+Minimal UIKit app for LookinServer MCP smoke tests (label, text field, button, colored view).
 
 ## SPM (local package)
 

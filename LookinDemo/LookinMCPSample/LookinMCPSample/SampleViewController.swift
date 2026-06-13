@@ -2,6 +2,7 @@ import UIKit
 
 final class SampleViewController: UIViewController {
     private let titleLabel = UILabel()
+    private let textField = UITextField()
     private let actionButton = UIButton(type: .system)
     private let colorBlock = UIView()
 
@@ -22,11 +23,20 @@ final class SampleViewController: UIViewController {
         actionButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
         actionButton.addTarget(self, action: #selector(handleTap), for: .touchUpInside)
 
+        textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.placeholder = "Type here for MCP"
+        textField.borderStyle = .roundedRect
+        textField.font = .systemFont(ofSize: 16)
+        textField.autocorrectionType = .no
+        textField.returnKeyType = .done
+        textField.delegate = self
+
         colorBlock.translatesAutoresizingMaskIntoConstraints = false
         colorBlock.backgroundColor = UIColor(red: 0.20, green: 0.55, blue: 0.95, alpha: 1.0)
         colorBlock.layer.cornerRadius = 12
 
         view.addSubview(titleLabel)
+        view.addSubview(textField)
         view.addSubview(actionButton)
         view.addSubview(colorBlock)
 
@@ -35,7 +45,12 @@ final class SampleViewController: UIViewController {
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
 
-            actionButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 32),
+            textField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 24),
+            textField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            textField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            textField.heightAnchor.constraint(equalToConstant: 44),
+
+            actionButton.topAnchor.constraint(equalTo: textField.bottomAnchor, constant: 24),
             actionButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
 
             colorBlock.topAnchor.constraint(equalTo: actionButton.bottomAnchor, constant: 40),
@@ -58,6 +73,14 @@ final class SampleViewController: UIViewController {
             value: titleLabel.text,
             hint: "Static heading label",
             traits: .staticText
+        )
+        configureAccessibility(
+            on: textField,
+            identifier: "mcp.textField",
+            label: "Text input",
+            value: textField.text,
+            hint: "Editable field for lookin_type_text MCP smoke test",
+            traits: .none
         )
         configureAccessibility(
             on: actionButton,
@@ -102,5 +125,12 @@ final class SampleViewController: UIViewController {
         colorBlock.backgroundColor = colorBlock.backgroundColor == .systemOrange
             ? UIColor(red: 0.20, green: 0.55, blue: 0.95, alpha: 1.0)
             : .systemOrange
+    }
+}
+
+extension SampleViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 }
