@@ -1,7 +1,7 @@
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import XCTest
-@testable import LookinServerPeertalk
+@testable import LookinServer
 
 final class PTChannelLoopbackTests: XCTestCase {
     func testLoopbackEchoFrame() async throws {

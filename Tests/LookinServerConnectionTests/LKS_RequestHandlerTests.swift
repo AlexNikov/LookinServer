@@ -2,8 +2,7 @@
 
 import QuartzCore
 import XCTest
-@testable import LookinServerConnection
-@testable import LookinServerShared
+@testable import LookinServer
 
 @MainActor
 final class LKS_RequestHandlerTests: XCTestCase {

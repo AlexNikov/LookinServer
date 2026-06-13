@@ -1,13 +1,10 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
 import UIKit
-#if canImport(LookinServerCategories)
-import LookinServerCategories
-#endif
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
 public final class LKS_CustomAttrGroupsMaker: NSObject {
     private var sectionAndAttrs: [String: [LKAttribute]] = [:]

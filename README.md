@@ -23,6 +23,8 @@ To use Lookin macOS app, you need to integrate LookinServer (iOS Framework of Lo
 ## via Swift Package Manager:
 `https://github.com/QMUI/LookinServer/`
 
+Products: **`LookinServer`** (full debug server, iOS/tvOS) and **`LookinShared`** (wire/models subset — macOS Lookin client parity). Folders under `Sources/` are layout only, not separate SPM modules. Local verify: `bash LookinServer/Scripts/verify_spm_unified_build.sh`.
+
 ## MCP (Model Context Protocol) — Debug only
 
 HTTP API on `127.0.0.1:47190` inside the iOS app. For AI agents you also need **lookin-ios-mcp** (Node) — see [docs/CURSOR_MCP_SETUP.md](docs/CURSOR_MCP_SETUP.md) (Cursor, Qwen Code).

@@ -1,12 +1,9 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
-#if canImport(LookinServerBase)
-import LookinServerBase
-#endif
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
 extension NSObject {
     public func lks_registerOid() -> UInt {

@@ -4,9 +4,6 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
-#if canImport(LookinServerBase)
-import LookinServerBase
-#endif
 
 private enum WireHierarchyObjectMapping {
     static func wireRef(_ object: LookinObject?) -> WireObjectRef? {

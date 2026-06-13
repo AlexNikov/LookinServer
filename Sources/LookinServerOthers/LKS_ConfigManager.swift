@@ -1,3 +1,6 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation

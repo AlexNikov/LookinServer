@@ -73,6 +73,14 @@ if [[ "$MAC_CLIENT_OBJC" -gt "${LOOKINCLIENT_TOTAL_OBJC_ATOBJC:-297}" ]]; then
   STATUS=1
 fi
 
+# G13: unified SPM/pod — no legacy modular LookinServer* imports in Sources/
+LEGACY_MODULE_IMPORTS=$(rg -c '#if canImport\(LookinServer' "$ROOT/Sources" --glob '*.swift' 2>/dev/null | awk -F: '{s+=$2} END {print s+0}' || true)
+if [[ "$LEGACY_MODULE_IMPORTS" != "0" ]]; then
+  echo "FAIL G13: found $LEGACY_MODULE_IMPORTS #if canImport(LookinServer* in Sources/ (use unified module or #if canImport(LookinShared))" >&2
+  rg '#if canImport\(LookinServer' "$ROOT/Sources" --glob '*.swift' 2>/dev/null | head -20 >&2 || true
+  STATUS=1
+fi
+
 if [[ "$STATUS" -eq 0 ]]; then
   echo "count_swift_objc: PASS (inventory: $INVENTORY)"
 fi

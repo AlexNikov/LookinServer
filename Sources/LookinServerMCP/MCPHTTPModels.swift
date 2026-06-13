@@ -1,5 +1,8 @@
 #if SHOULD_COMPILE_LOOKIN_SERVER
 import Foundation
+#if canImport(LookinShared)
+import LookinShared
+#endif
 
 struct MCPHTTPRequest {
     let method: String

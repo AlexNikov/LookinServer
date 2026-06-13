@@ -1,9 +1,9 @@
 import Foundation
 #if canImport(UIKit)
 import UIKit
+#if canImport(LookinShared)
+import LookinShared
 #endif
-#if canImport(LookinServerShared)
-import LookinServerShared
 #endif
 
 #if os(iOS) || os(tvOS) || os(visionOS)

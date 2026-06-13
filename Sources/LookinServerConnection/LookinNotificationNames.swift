@@ -1,22 +1,10 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
 
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
-#if canImport(LookinServerCoreSwift)
-import LookinServerCoreSwift
-#endif
-#if canImport(LookinServerCategories)
-import LookinServerCategories
-#endif
-#if canImport(LookinServerOthers)
-import LookinServerOthers
-#endif
-#if canImport(LookinServerPeertalk)
-import LookinServerPeertalk
-#endif
 extension Notification.Name {
     static let lookin2D = Notification.Name("Lookin_2D")
     static let lookin3D = Notification.Name("Lookin_3D")

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(LookinShared)
+import LookinShared
+#endif
 
 public typealias LookinAttrGroupIdentifier = String
 public typealias LookinAttrSectionIdentifier = String

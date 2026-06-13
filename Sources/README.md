@@ -4,6 +4,8 @@ All runtime code lives under `Sources/**`, including ivar trace and the ObjC exc
 
 **CocoaPods:** iOS apps integrate a single pod — [`LookinServer.podspec`](../LookinServer.podspec) (`LOOKIN_UNIFIED_MODULE=1`). Folders below are source layout, not separate pods. macOS Lookin client uses [`LookinShared.podspec`](../LookinShared.podspec).
 
+**Swift Package Manager:** same layout — products `LookinServer` (full iOS/tvOS server) and `LookinShared` (wire/models subset for macOS client). SPM splits shared vs server-only sources because a `.swift` file can belong to only one target; server code uses `#if canImport(LookinShared) import LookinShared #endif` for CocoaPods parity. ObjC exception catch (`.m`) is target `LookinServerObjCBridge`.
+
 | Folder | Role |
 |--------|------|
 | `LookinServerBase/` | `LookinIvarTrace` (`.h` + `.swift`) |

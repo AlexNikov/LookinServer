@@ -1,9 +1,9 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import UIKit
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
 extension UIView {
     @objc(lks_findHostViewController)

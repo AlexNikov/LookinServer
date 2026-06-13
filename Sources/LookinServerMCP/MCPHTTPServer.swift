@@ -1,6 +1,9 @@
 #if SHOULD_COMPILE_LOOKIN_SERVER
 import Foundation
 import Network
+#if canImport(LookinShared)
+import LookinShared
+#endif
 
 @objc(LKS_MCPHTTPServer)
 @objcMembers

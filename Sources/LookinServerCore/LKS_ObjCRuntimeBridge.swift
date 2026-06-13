@@ -1,14 +1,11 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
 import UIKit
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
-#if canImport(LookinServerOthers)
-import LookinServerOthers
-#endif
 @objc(LKS_ObjCRuntimeBridge)
 public final class LKS_ObjCRuntimeBridge: NSObject {
 

@@ -1,13 +1,10 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import UIKit
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
-#if canImport(LookinServerOthers)
-import LookinServerOthers
-#endif
 @objc(LKS_ExportManager)
 public final class LKS_ExportManager: NSObject {
 

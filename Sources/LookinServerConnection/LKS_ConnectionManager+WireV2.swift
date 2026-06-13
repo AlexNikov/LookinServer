@@ -1,23 +1,11 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
 import UIKit
 
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
-#if canImport(LookinServerCoreSwift)
-import LookinServerCoreSwift
-#endif
-#if canImport(LookinServerCategories)
-import LookinServerCategories
-#endif
-#if canImport(LookinServerOthers)
-import LookinServerOthers
-#endif
-#if canImport(LookinServerPeertalk)
-import LookinServerPeertalk
-#endif
 extension LKS_ConnectionManager {
     /// Detail responses use wire v2 JSON (attrs + LKPG screenshots).
     func respondWireV2(_ attachment: LKConnectionResponseAttachment, requestType: UInt32, tag: UInt32) {

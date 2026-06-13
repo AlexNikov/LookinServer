@@ -1,6 +1,5 @@
 import XCTest
-@testable import LookinServerShared
-@testable import LookinServerBase
+@testable import LookinServer
 
 final class LookinServerSharedTests: XCTestCase {
     func testObjCExceptionBridgeCatchesRaisedException() {

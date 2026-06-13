@@ -1,8 +1,5 @@
 // Generated from LookinDashboardBlueprint.m — do not edit by hand.
 import Foundation
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
 public final class LookinDashboardBlueprint: NSObject {
 

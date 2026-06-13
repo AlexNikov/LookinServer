@@ -1,16 +1,10 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
 import UIKit
-#if canImport(LookinServerCategories)
-import LookinServerCategories
-#endif
-#if canImport(LookinServerOthers)
-import LookinServerOthers
-#endif
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
 private typealias LKMultiplatformAdapter = LKS_MultiplatformAdapter
 

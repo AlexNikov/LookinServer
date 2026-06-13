@@ -1,7 +1,4 @@
 import Foundation
-#if canImport(LookinServerBase)
-import LookinServerBase
-#endif
 
 public class LookinObject: NSObject, NSCopying {
     public var oid: UInt = 0

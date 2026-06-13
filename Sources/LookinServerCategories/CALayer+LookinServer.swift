@@ -1,12 +1,9 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import UIKit
-#if canImport(LookinServerBase)
-import LookinServerBase
-#endif
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
 
 extension CALayer {
     public var lks_hostView: UIView? {

@@ -1,16 +1,10 @@
+#if canImport(LookinShared)
+import LookinShared
+#endif
 #if SHOULD_COMPILE_LOOKIN_SERVER
 
 import Foundation
 import UIKit
-#if canImport(LookinServerBase)
-import LookinServerBase
-#endif
-#if canImport(LookinServerShared)
-import LookinServerShared
-#endif
-#if canImport(LookinServerCategories)
-import LookinServerCategories
-#endif
 
 @objc(LKS_TraceManager)
 public final class LKS_TraceManager: NSObject {

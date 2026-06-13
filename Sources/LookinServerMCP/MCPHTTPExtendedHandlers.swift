@@ -1,20 +1,8 @@
 #if SHOULD_COMPILE_LOOKIN_SERVER
 import Foundation
 import UIKit
-#if canImport(LookinServerCategories)
-import LookinServerCategories
-#endif
-#if canImport(LookinServerConnection)
-import LookinServerConnection
-#endif
-#if canImport(LookinServerCoreSwift)
-import LookinServerCoreSwift
-#endif
-#if canImport(LookinServerOthers)
-import LookinServerOthers
-#endif
-#if canImport(LookinServerShared)
-import LookinServerShared
+#if canImport(LookinShared)
+import LookinShared
 #endif
 
 @MainActor
@@ -142,17 +130,17 @@ extension MCPHTTPHandler {
     }
 
     func handleScroll(body: [String: Any]?) -> MCPHTTPResponse {
-        var scrollView: UIScrollView?
+        var targetScrollView: UIScrollView?
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
             let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
             if let view = view(forOid: oid) {
-                scrollView = findScrollView(in: view) ?? view as? UIScrollView
+                targetScrollView = findScrollView(in: view) ?? view as? UIScrollView
             }
         } else if let x = doubleValue(from: body?["x"]), let y = doubleValue(from: body?["y"]),
                   let keyWindow = LKS_MultiplatformAdapter.keyWindow() {
-            scrollView = scrollView(at: CGPoint(x: x, y: y), in: keyWindow)
+            targetScrollView = scrollView(at: CGPoint(x: x, y: y), in: keyWindow)
         }
-        guard let sv = scrollView else {
+        guard let sv = targetScrollView else {
             return .error(message: "Provide scroll view 'oid' or point 'x'+'y'", statusCode: 400)
         }
 
