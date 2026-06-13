@@ -22,6 +22,9 @@ HTTP API **не** подключается к AI-агенту напрямую. 
 | GET | `/view/:oid/screenshot` | PNG base64 |
 | POST | `/tap` | Synthetic tap by `oid` or `x`+`y` |
 | POST | `/swipe` | Synthetic swipe by `oid`+`direction` or coordinates |
+| POST | `/type-text` | Type into `UITextField`/`UITextView` by `oid` or focused field |
+| POST | `/keyboard` | Keyboard: `dismiss`, `return`, or `insert` (`key`) |
+| POST | `/long-press` | Long press by `oid` or `x`+`y`, optional `duration` (0.2–5s) |
 | GET | `/wire-roundtrip` | Wire v2 diagnostics |
 | GET | `/wire-v2-selftest` | Wire v2 self-test |
 | POST | `/relisten-peertalk` | Restart Peertalk listen (mac client reconnect) |
@@ -56,6 +59,21 @@ curl -sf -X POST http://127.0.0.1:47190/swipe \
 curl -sf -X POST http://127.0.0.1:47190/swipe \
   -H 'Content-Type: application/json' \
   -d '{"fromX": 195, "fromY": 600, "toX": 195, "toY": 200}'
+
+# Type text into a text field by oid
+curl -sf -X POST http://127.0.0.1:47190/type-text \
+  -H 'Content-Type: application/json' \
+  -d '{"oid": 4393842944, "text": "hello"}'
+
+# Dismiss keyboard
+curl -sf -X POST http://127.0.0.1:47190/keyboard \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "dismiss"}'
+
+# Long press at coordinates
+curl -sf -X POST http://127.0.0.1:47190/long-press \
+  -H 'Content-Type: application/json' \
+  -d '{"x": 195, "y": 400, "duration": 0.8}'
 ```
 
 `direction` для swipe с `oid`: `up` (default), `down`, `left`, `right`.

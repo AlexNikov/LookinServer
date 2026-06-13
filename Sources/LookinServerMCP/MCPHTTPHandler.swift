@@ -59,6 +59,18 @@ final class MCPHTTPHandler {
                 return await handleSwipe(body: request.jsonBody)
             }
 
+            if request.method == "POST", request.path == "/type-text" {
+                return handleTypeText(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/keyboard" {
+                return handleKeyboard(body: request.jsonBody)
+            }
+
+            if request.method == "POST", request.path == "/long-press" {
+                return await handleLongPress(body: request.jsonBody)
+            }
+
             return .error(message: "Not found", statusCode: 404)
         }
     }
@@ -709,6 +721,225 @@ final class MCPHTTPHandler {
             view.touchesBegan([], with: UIEvent())
             view.touchesEnded([], with: UIEvent())
             NSLog("LookinServer MCP - tap via touchesBegan/Ended on %@", NSStringFromClass(type(of: view)))
+            return true
+        }
+
+        return false
+    }
+
+    // MARK: - POST /type-text
+
+    private func handleTypeText(body: [String: Any]?) -> MCPHTTPResponse {
+        guard let text = body?["text"] as? String, !text.isEmpty else {
+            return .error(message: "Provide non-empty 'text'", statusCode: 400)
+        }
+
+        let replace = (body?["replace"] as? Bool) ?? true
+        let focus = (body?["focus"] as? Bool) ?? true
+
+        var inputView: UIView?
+        if let oidValue = body?["oid"], !(oidValue is NSNull) {
+            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            inputView = textInputView(forOid: oid)
+            if inputView == nil {
+                return .error(message: "No UITextField/UITextView found for oid \(oid)", statusCode: 404)
+            }
+        } else {
+            inputView = firstResponderTextInput()
+            if inputView == nil {
+                return .error(message: "No focused text field — provide 'oid' or tap a field first", statusCode: 400)
+            }
+        }
+
+        guard let input = inputView else {
+            return .error(message: "Text input not available", statusCode: 500)
+        }
+
+        if focus {
+            _ = input.becomeFirstResponder()
+        }
+
+        if let textField = input as? UITextField {
+            let newText = replace ? text : (textField.text ?? "") + text
+            textField.text = newText
+            textField.sendActions(for: .editingChanged)
+            NSLog("LookinServer MCP - typeText UITextField %@", NSStringFromClass(type(of: textField)))
+            return .ok(data: [
+                "typed": true,
+                "text": newText,
+                "className": NSStringFromClass(type(of: textField)),
+            ])
+        }
+
+        if let textView = input as? UITextView {
+            let newText = replace ? text : (textView.text ?? "") + text
+            textView.text = newText
+            NotificationCenter.default.post(name: UITextView.textDidChangeNotification, object: textView)
+            NSLog("LookinServer MCP - typeText UITextView %@", NSStringFromClass(type(of: textView)))
+            return .ok(data: [
+                "typed": true,
+                "text": newText,
+                "className": NSStringFromClass(type(of: textView)),
+            ])
+        }
+
+        return .error(message: "Unsupported text input type", statusCode: 400)
+    }
+
+    // MARK: - POST /keyboard
+
+    private func handleKeyboard(body: [String: Any]?) -> MCPHTTPResponse {
+        let action = (body?["action"] as? String) ?? "dismiss"
+
+        switch action {
+        case "dismiss":
+            guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
+                return .error(message: "No key window found", statusCode: 503)
+            }
+            keyWindow.endEditing(true)
+            NSLog("LookinServer MCP - keyboard dismiss")
+            return .ok(data: ["keyboard": true, "action": "dismiss"])
+
+        case "return":
+            guard let textField = firstResponderTextInput() as? UITextField else {
+                return .error(message: "No focused UITextField for return action", statusCode: 400)
+            }
+            var handled = false
+            if let delegate = textField.delegate {
+                handled = delegate.textFieldShouldReturn?(textField) ?? false
+            }
+            if !handled {
+                _ = textField.resignFirstResponder()
+            }
+            NSLog("LookinServer MCP - keyboard return handled=%d", handled ? 1 : 0)
+            return .ok(data: ["keyboard": true, "action": "return", "handled": handled])
+
+        case "insert":
+            guard let key = body?["key"] as? String, !key.isEmpty else {
+                return .error(message: "Provide 'key' for insert action", statusCode: 400)
+            }
+            guard let input = firstResponderTextInput() as? UIResponder & UITextInput else {
+                return .error(message: "No focused text input for insert", statusCode: 400)
+            }
+            input.insertText(key)
+            NSLog("LookinServer MCP - keyboard insert len=%lu", key.count)
+            return .ok(data: ["keyboard": true, "action": "insert", "inserted": key])
+
+        default:
+            return .error(
+                message: "Unknown action '\(action)'. Use dismiss, return, or insert",
+                statusCode: 400
+            )
+        }
+    }
+
+    // MARK: - POST /long-press
+
+    private func handleLongPress(body: [String: Any]?) async -> MCPHTTPResponse {
+        guard let point = resolveWindowPoint(from: body) else {
+            return .error(message: "Provide 'oid' or 'x'+'y' coordinates", statusCode: 400)
+        }
+        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
+            return .error(message: "No key window found", statusCode: 503)
+        }
+
+        var duration = doubleValue(from: body?["duration"]) ?? 0.6
+        duration = min(max(duration, 0.2), 5.0)
+
+        if await sendSyntheticLongPress(at: point, in: keyWindow, duration: duration) {
+            return .ok(data: [
+                "longPressed": true,
+                "x": point.x,
+                "y": point.y,
+                "duration": duration,
+            ])
+        }
+        return .error(message: "Failed to synthesize long press", statusCode: 500)
+    }
+
+    private func view(forOid oid: UInt) -> UIView? {
+        guard let obj = NSObject.lks_object(withOid: oid) else { return nil }
+        if let v = obj as? UIView { return v }
+        if let l = obj as? CALayer { return l.lks_hostView }
+        return nil
+    }
+
+    private func doubleValue(from value: Any?) -> Double? {
+        if let v = value as? Double { return v }
+        if let v = value as? Int { return Double(v) }
+        if let v = value as? NSNumber { return v.doubleValue }
+        if let v = value as? CGFloat { return Double(v) }
+        return nil
+    }
+
+    private func resolveWindowPoint(from body: [String: Any]?) -> CGPoint? {
+        guard let body else { return nil }
+        if let oidValue = body["oid"], !(oidValue is NSNull) {
+            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            guard let view = view(forOid: oid) else { return nil }
+            let window = (view as? UIWindow) ?? view.window
+            guard let w = window else { return nil }
+            let boundsInWindow = view.convert(view.bounds, to: w)
+            return CGPoint(x: boundsInWindow.midX, y: boundsInWindow.midY)
+        }
+        if let x = doubleValue(from: body["x"]), let y = doubleValue(from: body["y"]) {
+            return CGPoint(x: x, y: y)
+        }
+        return nil
+    }
+
+    private func textInputView(forOid oid: UInt) -> UIView? {
+        guard let view = view(forOid: oid) else { return nil }
+        if view is UITextField || view is UITextView { return view }
+        return findTextInput(in: view)
+    }
+
+    private func findTextInput(in view: UIView) -> UIView? {
+        if view is UITextField || view is UITextView { return view }
+        for subview in view.subviews {
+            if let found = findTextInput(in: subview) { return found }
+        }
+        return nil
+    }
+
+    private func firstResponderTextInput() -> UIView? {
+        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else { return nil }
+        return findFirstResponderTextInput(in: keyWindow)
+    }
+
+    private func findFirstResponderTextInput(in view: UIView) -> UIView? {
+        if view.isFirstResponder && (view is UITextField || view is UITextView) {
+            return view
+        }
+        for subview in view.subviews {
+            if let found = findFirstResponderTextInput(in: subview) { return found }
+        }
+        return nil
+    }
+
+    private func sendSyntheticLongPress(at point: CGPoint, in window: UIWindow, duration: TimeInterval) async -> Bool {
+        let hitView = window.hitTest(point, with: nil)
+        let setSel = NSSelectorFromString("setState:")
+
+        var responder: UIView? = hitView
+        while let r = responder {
+            for gr in r.gestureRecognizers ?? [] {
+                if gr is UILongPressGestureRecognizer, gr.responds(to: setSel) {
+                    gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.began.rawValue))
+                    try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+                    gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.ended.rawValue))
+                    NSLog("LookinServer MCP - longPress UILongPressGestureRecognizer on %@", NSStringFromClass(type(of: r)))
+                    return true
+                }
+            }
+            responder = r.superview
+        }
+
+        if let view = hitView {
+            view.touchesBegan([], with: UIEvent())
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+            view.touchesEnded([], with: UIEvent())
+            NSLog("LookinServer MCP - longPress touches on %@", NSStringFromClass(type(of: view)))
             return true
         }
 

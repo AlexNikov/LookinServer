@@ -2,6 +2,7 @@ import { deviceManager } from "./device-manager.mjs";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const SWIPE_TIMEOUT_MS = 20_000;
+const LONG_PRESS_TIMEOUT_MS = 25_000;
 
 async function request(method, path, body, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -60,5 +61,14 @@ export const lookinClient = {
   },
   swipe(body) {
     return request("POST", "/swipe", body, SWIPE_TIMEOUT_MS);
+  },
+  typeText(body) {
+    return request("POST", "/type-text", body);
+  },
+  keyboard(body) {
+    return request("POST", "/keyboard", body);
+  },
+  longPress(body) {
+    return request("POST", "/long-press", body, LONG_PRESS_TIMEOUT_MS);
   },
 };

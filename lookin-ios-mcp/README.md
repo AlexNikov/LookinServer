@@ -75,7 +75,7 @@ qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project
 
 Проверка: `/mcp list` → `lookin-ios` connected.
 
-## MCP tools (7)
+## MCP tools (10)
 
 | Tool | Назначение |
 |------|------------|
@@ -84,6 +84,9 @@ qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project
 | `lookin_get_screenshot` | PNG скриншот |
 | `lookin_tap` | Синтетический тап |
 | `lookin_swipe` | Синтетический свайп |
+| `lookin_type_text` | Ввод текста в поле |
+| `lookin_keyboard` | Клавиатура: dismiss / return / insert |
+| `lookin_long_press` | Долгое нажатие |
 | `lookin_list_devices` | USB + simulators |
 | `lookin_connect_device` | Выбор sim / USB |
 

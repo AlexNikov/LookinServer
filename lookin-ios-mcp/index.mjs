@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Cursor MCP: LookinServer iOS (:47190) — hierarchy, attributes, screenshot, tap, swipe.
+ * Cursor MCP: LookinServer iOS (:47190) — hierarchy, attributes, screenshot, tap, swipe, text, keyboard, long-press.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -42,11 +42,14 @@ const VIEW_TOOLS = [
   "lookin_get_screenshot",
   "lookin_tap",
   "lookin_swipe",
+  "lookin_type_text",
+  "lookin_keyboard",
+  "lookin_long_press",
 ];
 
 const server = new McpServer({
   name: "lookin-ios",
-  version: "1.1.0",
+  version: "1.2.0",
 });
 
 server.tool(
@@ -182,6 +185,85 @@ server.tool(
     if (toY !== undefined) body.toY = toY;
     if (duration !== undefined) body.duration = duration;
     const result = await lookinClient.swipe(body);
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+);
+
+server.tool(
+  "lookin_type_text",
+  "Type text into a UITextField/UITextView. Target by oid or the currently focused field.",
+  {
+    text: z.string().describe("Text to type."),
+    oid: z
+      .number()
+      .optional()
+      .describe("Text field oid from hierarchy. Omit to use focused field."),
+    replace: z
+      .boolean()
+      .optional()
+      .describe("Replace existing text (default true). false = append."),
+    focus: z
+      .boolean()
+      .optional()
+      .describe("Call becomeFirstResponder before typing (default true)."),
+  },
+  async ({ text, oid, replace, focus }) => {
+    const blocked = await ensureDeviceSelected(VIEW_TOOLS);
+    if (blocked) return { content: [{ type: "text", text: blocked }] };
+    const body = { text };
+    if (oid !== undefined) body.oid = oid;
+    if (replace !== undefined) body.replace = replace;
+    if (focus !== undefined) body.focus = focus;
+    const result = await lookinClient.typeText(body);
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+);
+
+server.tool(
+  "lookin_keyboard",
+  "Keyboard actions: dismiss (hide), return (Done/Return on UITextField), insert (type via keyboard into focused field).",
+  {
+    action: z
+      .enum(["dismiss", "return", "insert"])
+      .optional()
+      .describe("dismiss (default), return, or insert."),
+    key: z
+      .string()
+      .optional()
+      .describe("Text to insert when action=insert (single char or string)."),
+  },
+  async ({ action, key }) => {
+    const blocked = await ensureDeviceSelected(VIEW_TOOLS);
+    if (blocked) return { content: [{ type: "text", text: blocked }] };
+    const body = {};
+    if (action) body.action = action;
+    if (key !== undefined) body.key = key;
+    const result = await lookinClient.keyboard(body);
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+);
+
+server.tool(
+  "lookin_long_press",
+  "Synthetic long press on the iOS app. By view oid (center) or window coordinates (x, y).",
+  {
+    oid: z.number().optional().describe("Long-press center of this view."),
+    x: z.number().optional().describe("Window X coordinate (use with y)."),
+    y: z.number().optional().describe("Window Y coordinate (use with x)."),
+    duration: z
+      .number()
+      .optional()
+      .describe("Hold duration in seconds (0.2–5.0, default 0.6)."),
+  },
+  async ({ oid, x, y, duration }) => {
+    const blocked = await ensureDeviceSelected(VIEW_TOOLS);
+    if (blocked) return { content: [{ type: "text", text: blocked }] };
+    const body = {};
+    if (oid !== undefined) body.oid = oid;
+    if (x !== undefined) body.x = x;
+    if (y !== undefined) body.y = y;
+    if (duration !== undefined) body.duration = duration;
+    const result = await lookinClient.longPress(body);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   }
 );

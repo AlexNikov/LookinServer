@@ -42,6 +42,9 @@ Run the app in Debug on simulator, then use tools:
 - `lookin_get_screenshot`
 - `lookin_tap`
 - `lookin_swipe`
+- `lookin_type_text`
+- `lookin_keyboard`
+- `lookin_long_press`
 
 Smoke without Cursor:
 

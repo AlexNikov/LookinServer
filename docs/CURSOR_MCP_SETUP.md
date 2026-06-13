@@ -155,7 +155,8 @@ cd .cursor/lookin-verify-mcp && npm install
 1. `lookin_get_hierarchy` — дерево UI, найти `oid`
 2. `lookin_get_attributes` — атрибуты view
 3. `lookin_get_screenshot` — скриншот
-4. `lookin_tap` / `lookin_swipe` — синтетические жесты
+4. `lookin_tap` / `lookin_swipe` / `lookin_long_press` — синтетические жесты
+5. `lookin_type_text` / `lookin_keyboard` — текст и клавиатура
 
 ---
 
@@ -168,6 +169,9 @@ cd .cursor/lookin-verify-mcp && npm install
 | `lookin_get_screenshot` | `GET /view/:oid/screenshot` | `oid?` (без oid — root window) |
 | `lookin_tap` | `POST /tap` | `oid?` или `x` + `y` |
 | `lookin_swipe` | `POST /swipe` | `oid?` + `direction?` или `fromX/Y` + `toX/Y`, `duration?` |
+| `lookin_type_text` | `POST /type-text` | `text`, `oid?`, `replace?`, `focus?` |
+| `lookin_keyboard` | `POST /keyboard` | `action?` (`dismiss`/`return`/`insert`), `key?` |
+| `lookin_long_press` | `POST /long-press` | `oid?` или `x` + `y`, `duration?` (0.2–5s) |
 | `lookin_list_devices` | — (Mac: simctl + usbmuxd) | — |
 | `lookin_connect_device` | — (Mac: iproxy :47191→device:47190) | `target` (UDID или `simulator`) |
 
