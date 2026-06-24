@@ -188,9 +188,12 @@ public struct WirePushEnvelope: Codable, Equatable {
 public enum LookinWirePushTypes {
     public static let bringForwardScreenshotTask: UInt32 = 303
     public static let cancelHierarchyDetails: UInt32 = 304
+    /// Server → client: Peertalk is listening and ready to accept requests.
+    public static let serverReady: UInt32 = 305
 
     public static let all: Set<UInt32> = [
         bringForwardScreenshotTask,
         cancelHierarchyDetails,
+        serverReady,
     ]
 }

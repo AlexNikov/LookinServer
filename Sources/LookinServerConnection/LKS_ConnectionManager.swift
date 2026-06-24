@@ -293,6 +293,7 @@ public final class LKS_ConnectionManager: NSObject {
             frameLoopTask = Task { @MainActor [weak self] in
                 await self?.runFrameLoop(on: peer)
             }
+            pushData(NSObject(), type: LookinWirePushTypes.serverReady)
         }
         await searchPortToListenIfNoConnection()
     }
