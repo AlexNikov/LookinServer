@@ -13,7 +13,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         _ = LookinServerEntry.self
-        _ = LKS_ConnectionManager.sharedInstance
         LookinDiagLog.log("demo launch bundle=\(Bundle.main.bundleIdentifier ?? "?") LookinServer+MCP")
         return true
     }

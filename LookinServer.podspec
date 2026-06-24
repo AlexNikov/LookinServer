@@ -83,6 +83,9 @@ Pod::Spec.new do |spec|
     ss.source_files = [
       "Sources/LookinServerMCP/**/*.swift",
     ]
+    ss.pod_target_xcconfig = {
+      "SWIFT_ACTIVE_COMPILATION_CONDITIONS" => "$(inherited) LOOKIN_SERVER_MCP",
+    }
   end
 
   spec.subspec "NoHook" do |ss|

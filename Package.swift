@@ -11,6 +11,7 @@ private let debugLookinCXXSettings: [CXXSetting] = [
 private let debugLookinSwiftSettings: [SwiftSetting] = [
     .define("SHOULD_COMPILE_LOOKIN_SERVER", .when(platforms: [.iOS, .tvOS], configuration: .debug)),
     .define("SPM_LOOKIN_SERVER_ENABLED", .when(platforms: [.iOS, .tvOS], configuration: .debug)),
+    .define("LOOKIN_SERVER_MCP", .when(platforms: [.iOS, .tvOS], configuration: .debug)),
 ]
 
 private let debugLookinServerCSettings: [CSetting] = [
