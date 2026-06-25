@@ -8,6 +8,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         _ = LookinServerEntry.self
+        MainActor.assumeIsolated {
+            _ = LKS_ConnectionManager.sharedInstance
+        }
         return true
     }
 

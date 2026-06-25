@@ -14,7 +14,7 @@ EXTERNAL SOURCES:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  LookinServer: b91675c6aa7fc12db69bfa53212ab5ce9eb827ba
+  LookinServer: 72ce14451eb58f33831a285ab53befde9fd38999
 
 PODFILE CHECKSUM: a3a529e4f858e64fbb134236f95026c80fe29249
 

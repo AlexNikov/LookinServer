@@ -3,7 +3,19 @@ import LookinShared
 #endif
 #if os(iOS) || os(tvOS) || os(visionOS)
 /// Triggers `LKS_ConnectionManager` bootstrap when the LookinServer product module loads.
-private let _lookinServerProductBootstrap = LKS_ConnectionManager.bootstrap
+private let _lookinServerProductBootstrap: Void = {
+    if Thread.isMainThread {
+        MainActor.assumeIsolated {
+            _ = LKS_ConnectionManager.bootstrap
+        }
+    } else {
+        DispatchQueue.main.sync {
+            MainActor.assumeIsolated {
+                _ = LKS_ConnectionManager.bootstrap
+            }
+        }
+    }
+}()
 #if LOOKIN_SERVER_MCP
 /// Compile-time anchor for subspec MCP — keeps `LKS_MCPHTTPServer` in the app binary
 /// (`ConnectionManager` starts it via `NSClassFromString`).
