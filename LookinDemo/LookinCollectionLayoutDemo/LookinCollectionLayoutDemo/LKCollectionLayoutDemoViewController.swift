@@ -3,6 +3,9 @@ import UIKit
 final class LKCollectionLayoutDemoViewController: UIViewController, UICollectionViewDelegate {
     private let leftRail = LKDemoLeftRailView()
     private var collectionView: UICollectionView!
+    private let stackView = UIStackView()
+    private let topButton = UIButton(type: .system)
+    private let bottomButton = UIButton(type: .system)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,10 +27,43 @@ final class LKCollectionLayoutDemoViewController: UIViewController, UICollection
             leftRail.widthAnchor.constraint(equalToConstant: 132),
         ])
 
+        topButton.setTitle("Show Alert", for: .normal)
+        topButton.addTarget(self, action: #selector(topButtonTapped), for: .touchUpInside)
+        applyAccessibility(
+            to: topButton,
+            identifier: "topAlertButton",
+            label: "Show Alert",
+            hint: "Presents an alert controller",
+            traits: .button
+        )
+
+        bottomButton.setTitle("Show Action Sheet", for: .normal)
+        bottomButton.addTarget(self, action: #selector(bottomButtonTapped), for: .touchUpInside)
+        applyAccessibility(
+            to: bottomButton,
+            identifier: "bottomActionSheetButton",
+            label: "Show Action Sheet",
+            hint: "Presents an action sheet",
+            traits: .button
+        )
+
+        stackView.axis = .vertical
+        stackView.spacing = 0
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        applyAccessibility(
+            to: stackView,
+            identifier: "mainContentStack",
+            label: "Main content stack",
+            hint: "Vertical stack with alert button, collection, and action sheet button",
+            isElement: false
+        )
+
         let layout = makeLayout()
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .systemGroupedBackground
+        collectionView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        collectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         applyAccessibility(
             to: collectionView,
             identifier: "mainCollectionView",
@@ -37,14 +73,21 @@ final class LKCollectionLayoutDemoViewController: UIViewController, UICollection
             isElement: false
         )
         collectionView.alwaysBounceVertical = true
+        collectionView.allowsSelection = true
         collectionView.delegate = self
         collectionView.dataSource = self
-        view.addSubview(collectionView)
+
+        stackView.addArrangedSubview(topButton)
+        stackView.addArrangedSubview(collectionView)
+        stackView.addArrangedSubview(bottomButton)
+        view.addSubview(stackView)
         NSLayoutConstraint.activate([
-            collectionView.leadingAnchor.constraint(equalTo: leftRail.trailingAnchor),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stackView.leadingAnchor.constraint(equalTo: leftRail.trailingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            topButton.heightAnchor.constraint(equalToConstant: 44),
+            bottomButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
         collectionView.register(
@@ -113,6 +156,32 @@ final class LKCollectionLayoutDemoViewController: UIViewController, UICollection
             return layoutSection
         }
     }
+
+    @objc private func topButtonTapped() {
+        let alert = UIAlertController(
+            title: "Alert",
+            message: "Shown from the top button.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
+    @objc private func bottomButtonTapped() {
+        let sheet = UIAlertController(
+            title: "Action Sheet",
+            message: "Shown from the bottom button.",
+            preferredStyle: .actionSheet
+        )
+        sheet.addAction(UIAlertAction(title: "Option A", style: .default))
+        sheet.addAction(UIAlertAction(title: "Option B", style: .default))
+        sheet.addAction(UIAlertAction(title: "Close", style: .cancel))
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = bottomButton
+            popover.sourceRect = bottomButton.bounds
+        }
+        present(sheet, animated: true)
+    }
 }
 
 extension LKCollectionLayoutDemoViewController: UICollectionViewDataSource {
@@ -168,6 +237,18 @@ extension LKCollectionLayoutDemoViewController: UICollectionViewDataSource {
         let section = LKDemoCollectionSection(rawValue: indexPath.section) ?? .autoLayout
         header.configure(title: LKDemoCollectionSectionTitle(section), section: indexPath.section)
         return header
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        collectionView.deselectItem(at: indexPath, animated: true)
+        guard let section = LKDemoCollectionSection(rawValue: indexPath.section) else { return }
+        let alert = UIAlertController(
+            title: "Cell Alert",
+            message: "\(LKDemoCollectionSectionTitle(section)) — item \(indexPath.item + 1)",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     private func applyAccessibility(

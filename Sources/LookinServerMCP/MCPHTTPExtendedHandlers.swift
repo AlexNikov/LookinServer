@@ -11,12 +11,16 @@ extension MCPHTTPHandler {
     // MARK: - Search / hit-test
 
     func handleFindView(body: [String: Any]?) -> MCPHTTPResponse {
-        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
-            return .error(message: "No key window found", statusCode: 503)
+        let allWindows = LKS_MultiplatformAdapter.allWindows()
+        guard !allWindows.isEmpty else {
+            return .error(message: "No windows found", statusCode: 503)
         }
         let maxResults = min(max(Int((body?["maxResults"] as? NSNumber)?.intValue ?? 20), 1), 100)
         var matches: [[String: Any]] = []
-        collectMatchingViews(in: keyWindow, window: keyWindow, body: body, matches: &matches, maxResults: maxResults)
+        for window in allWindows {
+            collectMatchingViews(in: window, window: window, body: body, matches: &matches, maxResults: maxResults)
+            if matches.count >= maxResults { break }
+        }
         return .ok(data: ["count": matches.count, "matches": matches])
     }
 
@@ -44,11 +48,30 @@ extension MCPHTTPHandler {
         guard findResponse.statusCode == 200,
               let data = findResponse.jsonBody["data"] as? [String: Any],
               let matches = data["matches"] as? [[String: Any]],
-              let first = matches.first,
-              let oid = first["oid"] as? UInt64 ?? (first["oid"] as? Int).map({ UInt64($0) }) else {
+              let first = preferredTapByLabelMatch(in: matches),
+              let oid = uintOid(from: first["oid"]) else {
             return .error(message: "No matching view found for tap-by-label criteria", statusCode: 404)
         }
         return handleTap(body: ["oid": oid])
+    }
+
+    private func preferredTapByLabelMatch(in matches: [[String: Any]]) -> [String: Any]? {
+        guard !matches.isEmpty else { return nil }
+        let ranked = matches.sorted { lhs, rhs in
+            tapByLabelMatchRank(lhs) < tapByLabelMatchRank(rhs)
+        }
+        return ranked.first
+    }
+
+    private func tapByLabelMatchRank(_ match: [String: Any]) -> Int {
+        let className = (match["className"] as? String) ?? ""
+        if (match["isControl"] as? Bool) == true { return 0 }
+        if className.contains("UIAlertControllerActionView") { return 1 }
+        if className.contains("UIButton") { return 2 }
+        if className.contains("UICollectionViewCell") || className.contains("UITableViewCell") { return 3 }
+        if className.contains("InterfaceActionCustomViewRepresentation") { return 8 }
+        if className.contains("UILabel") { return 9 }
+        return 5
     }
 
     func handleWaitForView(body: [String: Any]?) async -> MCPHTTPResponse {
@@ -132,7 +155,7 @@ extension MCPHTTPHandler {
     func handleScroll(body: [String: Any]?) -> MCPHTTPResponse {
         var targetScrollView: UIScrollView?
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
-            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            let oid = uintOid(from: oidValue) ?? 0
             if let view = view(forOid: oid) {
                 targetScrollView = findScrollView(in: view) ?? view as? UIScrollView
             }
@@ -176,7 +199,7 @@ extension MCPHTTPHandler {
         guard let oidValue = body?["oid"], !(oidValue is NSNull) else {
             return .error(message: "Provide 'oid'", statusCode: 400)
         }
-        let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+        let oid = uintOid(from: oidValue) ?? 0
         guard let view = view(forOid: oid) else {
             return .error(message: "Object with oid \(oid) not found", statusCode: 404)
         }
@@ -210,7 +233,7 @@ extension MCPHTTPHandler {
         guard let oidValue = body?["oid"], !(oidValue is NSNull) else {
             return .error(message: "Provide table/collection 'oid'", statusCode: 400)
         }
-        let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+        let oid = uintOid(from: oidValue) ?? 0
         guard let view = view(forOid: oid) else {
             return .error(message: "Object with oid \(oid) not found", statusCode: 404)
         }
@@ -359,7 +382,7 @@ extension MCPHTTPHandler {
               let selectorName = body["selector"] as? String, !selectorName.isEmpty else {
             return .error(message: "Required: oid, selector", statusCode: 400)
         }
-        let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+        let oid = uintOid(from: oidValue) ?? 0
         guard let targetObj = NSObject.lks_object(withOid: oid) else {
             return .error(message: "Object with oid \(oid) not found", statusCode: 404)
         }

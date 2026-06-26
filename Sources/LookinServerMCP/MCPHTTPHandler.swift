@@ -459,11 +459,14 @@ final class MCPHTTPHandler {
     // MARK: - GET /tap-targets
 
     private func handleTapTargets() -> MCPHTTPResponse {
-        guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
-            return .error(message: "No key window found", statusCode: 503)
+        let allWindows = LKS_MultiplatformAdapter.allWindows()
+        guard !allWindows.isEmpty else {
+            return .error(message: "No windows found", statusCode: 503)
         }
         var targets: [[String: Any]] = []
-        collectTapTargets(in: keyWindow, window: keyWindow, targets: &targets)
+        for window in allWindows {
+            collectTapTargets(in: window, window: window, targets: &targets)
+        }
         return .ok(data: ["count": targets.count, "targets": targets])
     }
 
@@ -596,11 +599,9 @@ final class MCPHTTPHandler {
     // MARK: - POST /tap
 
     func handleTap(body: [String: Any]?) -> MCPHTTPResponse {
-        var tapPoint: CGPoint?
-
-        // Priority 1: tap by oid
+        // Priority 1: tap by oid — use the view's own window so hitTest finds views in alert/overlay windows
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
-            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            let oid = uintOid(from: oidValue) ?? 0
             guard let obj = NSObject.lks_object(withOid: oid) else {
                 return .error(message: "Object with oid \(oid) not found", statusCode: 404)
             }
@@ -615,23 +616,23 @@ final class MCPHTTPHandler {
             guard let v = view else {
                 return .error(message: "View is not attached to a window", statusCode: 400)
             }
-            let window = (v as? UIWindow) ?? v.window
-            guard let w = window else {
+            let oidWindow = (v as? UIWindow) ?? v.window
+            guard let w = oidWindow else {
                 return .error(message: "View is not attached to a window", statusCode: 400)
             }
             let boundsInWindow = v.convert(v.bounds, to: w)
-            tapPoint = CGPoint(x: boundsInWindow.midX, y: boundsInWindow.midY)
-        }
-
-        // Priority 2: tap by x/y
-        if tapPoint == nil {
-            guard let x = body?["x"] as? CGFloat, let y = body?["y"] as? CGFloat else {
-                return .error(message: "Provide either 'oid' or 'x'+'y' coordinates", statusCode: 400)
+            let center = CGPoint(x: boundsInWindow.midX, y: boundsInWindow.midY)
+            if sendSyntheticTap(at: center, in: w) {
+                return .ok(data: ["tapped": true, "x": center.x, "y": center.y])
             }
-            tapPoint = CGPoint(x: x, y: y)
+            return .error(message: "Failed to synthesize tap event", statusCode: 500)
         }
 
-        let point = tapPoint!
+        // Priority 2: tap by x/y — use keyWindow
+        guard let x = body?["x"] as? CGFloat, let y = body?["y"] as? CGFloat else {
+            return .error(message: "Provide either 'oid' or 'x'+'y' coordinates", statusCode: 400)
+        }
+        let point = CGPoint(x: x, y: y)
         guard let keyWindow = LKS_MultiplatformAdapter.keyWindow() else {
             return .error(message: "No key window found", statusCode: 503)
         }
@@ -649,7 +650,7 @@ final class MCPHTTPHandler {
 
         // Priority 1: by oid + direction
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
-            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            let oid = uintOid(from: oidValue) ?? 0
             guard let obj = NSObject.lks_object(withOid: oid) else {
                 return .error(message: "Object with oid \(oid) not found", statusCode: 404)
             }
@@ -768,17 +769,35 @@ final class MCPHTTPHandler {
             return true
         }
 
+        // Path 1b: collection / table cell selection
+        if fireSyntheticCellSelection(hitView: hitView) {
+            return true
+        }
+
+        // Path 1c: UIAlertController action buttons (before accessibilityActivate — a11y can swallow without dismissing)
+        if dismissPresentedAlertAction(hitView: hitView, in: window) {
+            return true
+        }
+
+        // Path 1d: accessibilityActivate (UIAlert actions and similar a11y elements)
+        var accessibilityView: UIView? = hitView
+        var depth = 0
+        while let view = accessibilityView, depth < 8 {
+            if view.isAccessibilityElement, view.accessibilityActivate() {
+                NSLog("LookinServer MCP - accessibilityActivate %@ at (%.1f, %.1f)", NSStringFromClass(type(of: view)), point.x, point.y)
+                return true
+            }
+            accessibilityView = view.superview
+            depth += 1
+        }
+
         // Path 2: UITapGestureRecognizer
         var responder: UIView? = hitView
         while let r = responder {
             for gr in r.gestureRecognizers ?? [] {
-                if gr is UITapGestureRecognizer {
-                    let setSel = NSSelectorFromString("setState:")
-                    if gr.responds(to: setSel) {
-                        gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.recognized.rawValue))
-                        NSLog("LookinServer MCP - tap UITapGestureRecognizer on %@", NSStringFromClass(type(of: r)))
-                        return true
-                    }
+                if fireSyntheticTapGestureRecognizer(gr, on: r) {
+                    NSLog("LookinServer MCP - tap UITapGestureRecognizer on %@", NSStringFromClass(type(of: r)))
+                    return true
                 }
             }
             responder = r.superview
@@ -795,6 +814,175 @@ final class MCPHTTPHandler {
         return false
     }
 
+    private func fireSyntheticTapGestureRecognizer(_ gr: UIGestureRecognizer, on view: UIView) -> Bool {
+        guard gr is UITapGestureRecognizer, gr.isEnabled else { return false }
+        let setSel = NSSelectorFromString("setState:")
+        guard gr.responds(to: setSel) else { return false }
+        gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.began.rawValue))
+        gr.perform(setSel, with: NSNumber(value: UIGestureRecognizer.State.ended.rawValue))
+        return true
+    }
+
+    private func enclosingCollectionViewCell(for view: UIView?) -> UICollectionViewCell? {
+        var current = view
+        while let v = current {
+            if let cell = v as? UICollectionViewCell { return cell }
+            current = v.superview
+        }
+        return nil
+    }
+
+    private func fireSyntheticCellSelection(hitView: UIView?) -> Bool {
+        if let cell = enclosingCollectionViewCell(for: hitView) {
+            var parent: UIView? = cell.superview
+            while let container = parent {
+                if let collectionView = container as? UICollectionView,
+                   let indexPath = collectionView.indexPath(for: cell) {
+                    collectionView.selectItem(at: indexPath, animated: true, scrollPosition: [])
+                    collectionView.delegate?.collectionView?(collectionView, didSelectItemAt: indexPath)
+                    NSLog(
+                        "LookinServer MCP - select UICollectionViewCell %@ section %ld item %ld",
+                        NSStringFromClass(type(of: cell)),
+                        indexPath.section,
+                        indexPath.item
+                    )
+                    return true
+                }
+                parent = container.superview
+            }
+        }
+        if let cell = enclosingTableViewCell(for: hitView) {
+            var parent: UIView? = cell.superview
+            while let container = parent {
+                if let tableView = container as? UITableView,
+                   let indexPath = tableView.indexPath(for: cell) {
+                    tableView.selectRow(at: indexPath, animated: true, scrollPosition: .none)
+                    tableView.delegate?.tableView?(tableView, didSelectRowAt: indexPath)
+                    NSLog("LookinServer MCP - select UITableViewCell section %ld row %ld", indexPath.section, indexPath.row)
+                    return true
+                }
+                parent = container.superview
+            }
+        }
+        return false
+    }
+
+    private func enclosingTableViewCell(for view: UIView?) -> UITableViewCell? {
+        var current = view
+        while let v = current {
+            if let cell = v as? UITableViewCell { return cell }
+            current = v.superview
+        }
+        return nil
+    }
+
+    private func dismissPresentedAlertAction(hitView: UIView?, in window: UIWindow) -> Bool {
+        guard let hitView else { return false }
+        for hostWindow in LKS_MultiplatformAdapter.allWindows() {
+            guard findAnyAlertPhoneView(inRoot: hostWindow) != nil else { continue }
+            if hitView.isDescendant(of: hostWindow), isAlertActionHitView(hitView) {
+                return dismissUIAlertController(anchoredAt: hitView, in: hostWindow)
+            }
+        }
+        var current: UIView? = hitView
+        while let view = current {
+            if isAlertActionHitView(view) {
+                return dismissUIAlertController(anchoredAt: view, in: window)
+            }
+            current = view.superview
+        }
+        return false
+    }
+
+    private func isAlertActionHitView(_ view: UIView) -> Bool {
+        let className = NSStringFromClass(type(of: view))
+        return className.contains("AlertControllerAction")
+            || className.contains("InterfaceActionCustomViewRepresentation")
+    }
+
+    private func dismissUIAlertController(anchoredAt view: UIView, in window: UIWindow) -> Bool {
+        if dismissPresentedUIAlertController(from: window) {
+            return true
+        }
+        if removeAlertPresentationContainer(anchoredAt: view, in: window) {
+            return true
+        }
+        var responder: UIResponder? = view
+        while let current = responder {
+            if let alert = current as? UIAlertController {
+                alert.dismiss(animated: true)
+                return true
+            }
+            responder = current.next
+        }
+        return false
+    }
+
+    private func dismissPresentedUIAlertController(from window: UIWindow) -> Bool {
+        for hostWindow in LKS_MultiplatformAdapter.allWindows() {
+            var candidate: UIViewController? = hostWindow.rootViewController
+            while let vc = candidate {
+                if let alert = vc.presentedViewController as? UIAlertController {
+                    alert.dismiss(animated: true)
+                    return true
+                }
+                if let presented = vc.presentedViewController {
+                    candidate = presented
+                    continue
+                }
+                if let nav = vc as? UINavigationController, let visible = nav.visibleViewController {
+                    candidate = visible
+                    continue
+                }
+                if let tab = vc as? UITabBarController, let selected = tab.selectedViewController {
+                    candidate = selected
+                    continue
+                }
+                break
+            }
+        }
+        return false
+    }
+
+    private func removeAlertPresentationContainer(anchoredAt view: UIView, in window: UIWindow) -> Bool {
+        for hostWindow in LKS_MultiplatformAdapter.allWindows() {
+            guard let alertView = findAnyAlertPhoneView(inRoot: hostWindow) else { continue }
+            var target = alertView
+            var current: UIView? = alertView
+            while let v = current, v !== hostWindow {
+                let className = NSStringFromClass(type(of: v))
+                if className.contains("Transition")
+                    || className.contains("GlassInteraction")
+                    || className.contains("DropShadow")
+                    || v.superview === hostWindow {
+                    target = v
+                    break
+                }
+                target = v
+                current = v.superview
+            }
+            target.removeFromSuperview()
+            return true
+        }
+        return false
+    }
+
+    private func findAnyAlertPhoneView(in root: UIView) -> UIView? {
+        findAnyAlertPhoneView(inRoot: root)
+    }
+
+    private func findAnyAlertPhoneView(inRoot root: UIView) -> UIView? {
+        if NSStringFromClass(type(of: root)).contains("UIAlertControllerPhoneTVMacView") {
+            return root
+        }
+        for subview in root.subviews {
+            if let found = findAnyAlertPhoneView(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
+
     // MARK: - POST /type-text
 
     func handleTypeText(body: [String: Any]?) -> MCPHTTPResponse {
@@ -807,7 +995,7 @@ final class MCPHTTPHandler {
 
         var inputView: UIView?
         if let oidValue = body?["oid"], !(oidValue is NSNull) {
-            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            let oid = uintOid(from: oidValue) ?? 0
             inputView = textInputView(forOid: oid)
             if inputView == nil {
                 return .error(message: "No text input found for oid \(oid)", statusCode: 404)
@@ -969,10 +1157,19 @@ final class MCPHTTPHandler {
         return nil
     }
 
+    func uintOid(from value: Any?) -> UInt? {
+        guard let value, !(value is NSNull) else { return nil }
+        if let n = value as? NSNumber { return UInt(truncatingIfNeeded: n.uint64Value) }
+        if let u = value as? UInt { return u }
+        if let u64 = value as? UInt64 { return UInt(truncatingIfNeeded: u64) }
+        if let i = value as? Int { return UInt(truncatingIfNeeded: i) }
+        return nil
+    }
+
     func resolveWindowPoint(from body: [String: Any]?) -> CGPoint? {
         guard let body else { return nil }
         if let oidValue = body["oid"], !(oidValue is NSNull) {
-            let oid = UInt(truncatingIfNeeded: (oidValue as? UInt64) ?? UInt64((oidValue as? Int) ?? 0))
+            let oid = uintOid(from: oidValue) ?? 0
             guard let view = view(forOid: oid) else { return nil }
             let window = (view as? UIWindow) ?? view.window
             guard let w = window else { return nil }
