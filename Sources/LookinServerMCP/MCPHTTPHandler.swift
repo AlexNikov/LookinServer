@@ -151,6 +151,7 @@ final class MCPHTTPHandler {
             "screenScale": appInfo.screenScale,
             "peertalkListenPort": manager.mcpPeertalkListenPort(),
             "peertalkConnected": manager.mcpPeertalkIsConnected(),
+            "lastTiming": LKServerConnectionTiming.summary,
         ]
         return .ok(data: data)
     }

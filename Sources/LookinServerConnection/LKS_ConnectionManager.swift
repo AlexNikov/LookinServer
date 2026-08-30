@@ -28,6 +28,7 @@ public final class LKS_ConnectionManager: NSObject {
     private var listeningTask: Task<Void, Never>?
     private var frameLoopTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
+    private var portSearchInProgress = false
     let requestHandler = LKS_RequestHandler()
     private var lastPeerFrameAt: TimeInterval = 0
 
@@ -191,6 +192,7 @@ public final class LKS_ConnectionManager: NSObject {
     }
 
     @objc public func nudgePeertalkListenForLaunchScreenDiscoveryIfNeeded() {
+        LKServerConnectionTiming.recordInstant("server.relisten", durationMs: 0, attrs: ["source": "nudge"])
         Task { await searchPortToListenIfNoConnection() }
     }
 
@@ -206,6 +208,13 @@ public final class LKS_ConnectionManager: NSObject {
     // MARK: - Peertalk orchestration
 
     private func searchPortToListenIfNoConnection() async {
+        if portSearchInProgress { return }
+        if let listen = listenChannel, await listen.isListening {
+            return
+        }
+        portSearchInProgress = true
+        defer { portSearchInProgress = false }
+
         await clearDeadPeersIfNeeded()
         await recycleStaleListenPeerIfNeeded()
         await recycleStaleConnectedPeerIfNeededAsync(minIdle: 0.25)
@@ -249,6 +258,11 @@ public final class LKS_ConnectionManager: NSObject {
                 try await channel.listen(onPort: UInt16(current))
                 NSLog("LookinServer - Connected successfully on 127.0.0.1:%d", current)
                 LookinDiagLog.log("Peertalk listen OK port=\(current)")
+                LKServerConnectionTiming.recordInstant(
+                    "server.listen.port",
+                    durationMs: 0,
+                    attrs: ["port": Int(current)]
+                )
                 listenChannel = channel
                 peerChannel = channel
                 peerChannelUniqueID = await channel.uniqueID
@@ -258,6 +272,7 @@ public final class LKS_ConnectionManager: NSObject {
                 }
                 return
             } catch {
+                await channel.close()
                 if current < to {
                     NSLog("LookinServer - 127.0.0.1:%d is unavailable(%@). Will try anothor address ...", current, error as NSError)
                     LookinDiagLog.log("Peertalk listen skip port=\(current) errno=\((error as NSError).code)")

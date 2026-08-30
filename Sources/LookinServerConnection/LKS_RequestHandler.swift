@@ -51,7 +51,14 @@ public final class LKS_RequestHandler {
             }
             let needImages = (params["needImages"] as? NSNumber)?.boolValue ?? false
             let localIdentifiers = params["local"] as? [NSNumber]
+            let appStart = CFAbsoluteTimeGetCurrent()
             let appInfo = LKAppInfo.currentInfo(withScreenshot: needImages, icon: needImages, localIdentifiers: localIdentifiers)
+            let appMs = Int((CFAbsoluteTimeGetCurrent() - appStart) * 1000)
+            LKServerConnectionTiming.recordInstant(
+                "server.appRequest",
+                durationMs: appMs,
+                attrs: ["needImages": needImages, "cached": appInfo.shouldUseCache]
+            )
 
             var responseAttachment = LKConnectionResponseAttachment()
             responseAttachment.data = appInfo
