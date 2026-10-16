@@ -152,13 +152,15 @@ cd .cursor/lookin-verify-mcp && npm install
 
 Типичный workflow:
 
-1. `lookin_get_hierarchy` / `lookin_get_tap_targets` / `lookin_find_view` — найти `oid`
-2. `lookin_get_attributes` / `lookin_get_custom_info` — атрибуты
-3. `lookin_get_screenshot` — скриншот
-4. Жесты: `lookin_tap`, `lookin_tap_by_label`, `lookin_swipe`, `lookin_long_press`, `lookin_pinch`, `lookin_scroll`, …
-5. Текст: `lookin_type_text`, `lookin_keyboard`, `lookin_clear_text`
+1. `lookin_get_screen` — где экран, какие VC, alert и что можно нажать. `outline: true` — компактное дерево без frame
+2. `lookin_get_hierarchy` / `lookin_get_tap_targets` / `lookin_find_view` — найти `oid`. У hierarchy `includeSystemViews: false` прячет системные контейнеры
+3. `lookin_get_attributes` / `lookin_get_all_properties` / `lookin_get_custom_info` — атрибуты
+4. `lookin_get_screenshot` / `lookin_compare_screenshots` — скриншот и сравнение с предыдущим снимком
+5. Жесты: `lookin_tap`, `lookin_tap_by_label`, `lookin_swipe`, `lookin_long_press`, `lookin_pinch`, `lookin_scroll`, `lookin_shake`, …
+6. Текст: `lookin_type_text`, `lookin_keyboard`, `lookin_clear_text`
+7. Runtime: `lookin_get_orientation` / `lookin_set_orientation`, `lookin_get_appearance` / `lookin_set_appearance`, `lookin_get_logs`
 
-**31 MCP tool** — полный список: [lookin-ios-mcp/README.md](../lookin-ios-mcp/README.md).
+**44 MCP tool** — полный список: [lookin-ios-mcp/README.md](../lookin-ios-mcp/README.md).
 
 ---
 
@@ -167,11 +169,18 @@ cd .cursor/lookin-verify-mcp && npm install
 | MCP tool | HTTP |
 |----------|------|
 | `lookin_get_status` | `GET /status` |
+| `lookin_get_screen` | `GET /screen` (`?outline=1`) |
 | `lookin_get_tap_targets` | `GET /tap-targets` |
+| `lookin_get_all_properties` | `GET /view/:oid/properties` |
 | `lookin_find_view` | `POST /find-view` |
 | `lookin_modify_attribute` | `POST /view/:oid/attributes` |
 | `lookin_get_custom_info` | `GET /view/:oid/custom-info` |
 | `lookin_invoke_method` | `POST /invoke-method` |
+| `lookin_get_orientation` / `lookin_set_orientation` | `GET` / `POST /orientation` |
+| `lookin_get_appearance` / `lookin_set_appearance` | `GET` / `POST /appearance` |
+| `lookin_shake` | `POST /shake` |
+| `lookin_get_logs` | `GET /logs` |
+| `lookin_compare_screenshots` | `POST /screenshot-compare` |
 | `lookin_list_devices` | — (Mac) |
 | `lookin_connect_device` | — (Mac iproxy) |
 

@@ -9,10 +9,13 @@ import { VIEW_TOOLS, registerLookinTools } from "./register-tools.mjs";
 
 function limitDepth(items, maxDepth, currentDepth = 0) {
   if (maxDepth > 0 && currentDepth >= maxDepth) return [];
-  return items.map((item) => ({
-    ...item,
-    children: limitDepth(item.children ?? [], maxDepth, currentDepth + 1),
-  }));
+  return items.map((item) => {
+    const children = limitDepth(item.children ?? [], maxDepth, currentDepth + 1);
+    const next = { ...item };
+    if (children.length > 0) next.children = children;
+    else delete next.children;
+    return next;
+  });
 }
 
 function countItems(list) {
@@ -51,7 +54,7 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 process.stderr.write(
-  `[lookin-ios-mcp] Server started (LookinServer :47190, ${VIEW_TOOLS.length + 5} tools)\n`
+  `[lookin-ios-mcp] Server started (LookinServer :47190, ${VIEW_TOOLS.length + 4} tools)\n`
 );
 deviceManager.autoConnect().catch(() => {});
 

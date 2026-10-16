@@ -15,7 +15,8 @@ HTTP API **не** подключается к AI-агенту напрямую. 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/status` | App name, bundle id, screen metrics, Peertalk state |
-| GET | `/hierarchy` | View/layer tree |
+| GET | `/hierarchy` | View/layer tree (пустые `children` не сериализуются; у view есть `hostViewController`, если есть host VC) |
+| GET | `/screen` | Снимок экрана: app, visible view controllers, alert, tap-targets. `?outline=1` добавляет компактное дерево |
 | GET | `/tap-targets` | Tappable views (oid, frame, title) |
 | GET | `/text-inputs` | Typeable text inputs (UITextField, UITextView, UITextInput) |
 | GET | `/view/:oid/attributes` | Attribute groups |
@@ -45,8 +46,22 @@ HTTP API **не** подключается к AI-агенту напрямую. 
 | GET | `/wire-roundtrip` | Wire v2 diagnostics |
 | GET | `/wire-v2-selftest` | Wire v2 self-test |
 | POST | `/relisten-peertalk` | Restart Peertalk listen (mac client reconnect) |
+| GET | `/orientation` | Текущая interface orientation key window scene |
+| POST | `/orientation` | `portrait` / `portraitUpsideDown` / `landscapeLeft` / `landscapeRight` через `requestGeometryUpdate` (iOS 16+) |
+| GET | `/appearance` | Текущий `overrideUserInterfaceStyle` key window: `light` / `dark` / `unspecified` |
+| POST | `/appearance` | Тот же style на все окна (и window scene на iOS 17+) |
+| POST | `/shake` | Motion shake первому responder в цепочке key window, который переопределяет `motionBegan`/`motionEnded` |
+| GET | `/logs` | OSLogStore текущего процесса (iOS 15+). Query: `limit` (1–500, по умолчанию 100), `subsystem`, `category`. Последний час, новые в конце |
+| POST | `/screenshot-compare` | Сравнение PNG с предыдущим снимком того же oid. Первый вызов только сохраняет baseline |
 
 Ответы: `{ "success": true, "data": ... }` или `{ "success": false, "error": "..." }`.
+
+Ограничения runtime-ручек:
+
+- Ориентация меняется только на iOS 16+ через `UIWindowScene.requestGeometryUpdate`. Если сцена не перешла в запрошенную ориентацию, ответ — ошибка, не ложный success.
+- Логи — `OSLogStore` текущего процесса, iOS 15+, окно последний час, не больше 500 записей. Если store недоступен, это ошибка, не пустой список.
+- Shake доставляется только responder-у, который сам переопределяет `motionBegan` или `motionEnded`. Иначе ошибка.
+- `POST /screenshot-compare` хранит последний PNG в памяти процесса. Первый вызов возвращает `stored: true, compared: false` без base64 обоих кадров. Diff PNG (уменьшенный) только при `includeDiffImage: true`.
 
 ## curl examples
 

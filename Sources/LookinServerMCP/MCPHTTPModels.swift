@@ -7,6 +7,7 @@ import LookinShared
 struct MCPHTTPRequest {
     let method: String
     let path: String
+    let query: [String: String]
     let jsonBody: [String: Any]?
     let oidParam: UInt
 }
@@ -39,6 +40,7 @@ struct MCPHTTPResponse {
         case 400: statusText = "Bad Request"
         case 404: statusText = "Not Found"
         case 500: statusText = "Internal Server Error"
+        case 409: statusText = "Conflict"
         case 503: statusText = "Service Unavailable"
         default: statusText = "OK"
         }
@@ -55,6 +57,11 @@ struct MCPHTTPResponse {
     }
 }
 
+enum MCPCaptureResult {
+    case image(data: Data, width: CGFloat, height: CGFloat)
+    case failure(MCPHTTPResponse)
+}
+
 enum MCPHTTPRequestParser {
     static func parse(_ data: Data) -> MCPHTTPRequest? {
         guard let raw = String(data: data, encoding: .utf8) else { return nil }
@@ -69,8 +76,11 @@ enum MCPHTTPRequestParser {
 
         let method = String(parts[0]).uppercased()
         var path = String(parts[1])
+        var query: [String: String] = [:]
         if let queryIndex = path.firstIndex(of: "?") {
+            let queryString = String(path[path.index(after: queryIndex)...])
             path = String(path[..<queryIndex])
+            query = parseQuery(queryString)
         }
 
         let bodyString = String(raw[separatorRange.upperBound...])
@@ -87,7 +97,22 @@ enum MCPHTTPRequestParser {
             oidParam = oid
         }
 
-        return MCPHTTPRequest(method: method, path: path, jsonBody: jsonBody, oidParam: oidParam)
+        return MCPHTTPRequest(method: method, path: path, query: query, jsonBody: jsonBody, oidParam: oidParam)
+    }
+
+    private static func parseQuery(_ queryString: String) -> [String: String] {
+        var query: [String: String] = [:]
+        for pair in queryString.split(separator: "&") where !pair.isEmpty {
+            let bits = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+            let rawKey = bits.first ?? ""
+            let rawValue = bits.count > 1 ? bits[1] : ""
+            let key = rawKey.replacingOccurrences(of: "+", with: "%20").removingPercentEncoding ?? rawKey
+            let value = rawValue.replacingOccurrences(of: "+", with: "%20").removingPercentEncoding ?? rawValue
+            if !key.isEmpty {
+                query[key] = value
+            }
+        }
+        return query
     }
 }
 #endif

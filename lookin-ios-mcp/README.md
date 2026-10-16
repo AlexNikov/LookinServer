@@ -75,7 +75,7 @@ qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project
 
 Проверка: `/mcp list` → `lookin-ios` connected.
 
-## MCP tools (35)
+## MCP tools (44)
 
 ### App context
 `lookin_get_active_app`, `lookin_set_expected_app`, `lookin_clear_expected_app`
@@ -83,13 +83,15 @@ qwen mcp add lookin-ios node lookin-ios-mcp/index.mjs -s project
 All view tools accept optional `expectedBundleId` and attach `_appContext.warning` when the foreground app changed since the last call.
 
 ### Inspect
-`lookin_get_hierarchy`, `lookin_get_status`, `lookin_get_tap_targets`, `lookin_list_text_inputs`, `lookin_get_attributes`, `lookin_modify_attribute`, `lookin_get_screenshot`, `lookin_get_custom_info`, `lookin_get_hierarchy_details`, `lookin_get_selectors`, `lookin_find_view`, `lookin_get_view_at_point`, `lookin_wait_for_view`
+`lookin_get_hierarchy`, `lookin_get_status`, `lookin_get_screen`, `lookin_get_tap_targets`, `lookin_list_text_inputs`, `lookin_get_attributes`, `lookin_get_all_properties`, `lookin_get_screenshot`, `lookin_compare_screenshots`, `lookin_get_custom_info`, `lookin_get_hierarchy_details`, `lookin_get_selectors`, `lookin_find_view`, `lookin_get_view_at_point`, `lookin_wait_for_view`, `lookin_get_orientation`, `lookin_get_appearance`, `lookin_get_logs`
+
+`lookin_get_hierarchy` принимает `includeSystemViews` (по умолчанию всё дерево). `false` убирает контейнеры с именем на `_` и `UITransitionView`, `UIDropShadowView`, `UILayoutContainerView`, `UINavigationTransitionView`, `UIViewControllerWrapperView`, поднимая их детей. `lookin_get_screen` с `outline: true` добавляет дерево без frame и без пустых `children`.
 
 ### Gestures / input
-`lookin_tap`, `lookin_tap_by_label`, `lookin_double_tap`, `lookin_long_press`, `lookin_swipe`, `lookin_drag`, `lookin_pinch`, `lookin_scroll`, `lookin_toggle`, `lookin_select_row`, `lookin_type_text`, `lookin_clear_text`, `lookin_keyboard`
+`lookin_tap`, `lookin_tap_by_label`, `lookin_double_tap`, `lookin_long_press`, `lookin_swipe`, `lookin_drag`, `lookin_pinch`, `lookin_scroll`, `lookin_toggle`, `lookin_select_row`, `lookin_type_text`, `lookin_clear_text`, `lookin_keyboard`, `lookin_shake`
 
 ### Runtime / dev
-`lookin_modify_custom_attr`, `lookin_invoke_method`, `lookin_wire_selftest`, `lookin_relisten_peertalk`
+`lookin_modify_attribute`, `lookin_modify_custom_attr`, `lookin_invoke_method`, `lookin_set_orientation`, `lookin_set_appearance`, `lookin_wire_selftest`, `lookin_relisten_peertalk`
 
 ### Device
 `lookin_list_devices`, `lookin_connect_device`

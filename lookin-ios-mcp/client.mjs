@@ -52,6 +52,35 @@ export const lookinClient = {
   getHierarchy() {
     return request("GET", "/hierarchy");
   },
+  getScreen({ outline } = {}) {
+    return request("GET", outline ? "/screen?outline=1" : "/screen");
+  },
+  getOrientation() {
+    return request("GET", "/orientation");
+  },
+  setOrientation(body) {
+    return request("POST", "/orientation", body);
+  },
+  getAppearance() {
+    return request("GET", "/appearance");
+  },
+  setAppearance(body) {
+    return request("POST", "/appearance", body);
+  },
+  shake() {
+    return request("POST", "/shake", {});
+  },
+  getLogs({ limit, subsystem, category } = {}) {
+    const params = new URLSearchParams();
+    if (limit != null) params.set("limit", String(limit));
+    if (subsystem) params.set("subsystem", subsystem);
+    if (category) params.set("category", category);
+    const query = params.toString();
+    return request("GET", query ? `/logs?${query}` : "/logs");
+  },
+  compareScreenshots(body) {
+    return request("POST", "/screenshot-compare", body ?? {});
+  },
   getTapTargets() {
     return request("GET", "/tap-targets");
   },

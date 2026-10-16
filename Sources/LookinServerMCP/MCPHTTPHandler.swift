@@ -7,6 +7,8 @@ import LookinShared
 
 @MainActor
 final class MCPHTTPHandler {
+    /// Last PNG captured by POST /screenshot-compare, keyed by view oid.
+    var screenshotBaselines: [UInt: Data] = [:]
 
     func handle(request: MCPHTTPRequest) async -> MCPHTTPResponse {
         switch (request.method, request.path) {
@@ -14,8 +16,24 @@ final class MCPHTTPHandler {
             return handleStatus()
         case ("GET", "/hierarchy"):
             return handleHierarchy()
+        case ("GET", "/screen"):
+            return handleScreen(outline: request.query["outline"] == "1" || request.query["outline"] == "true")
         case ("GET", "/tap-targets"):
             return handleTapTargets()
+        case ("GET", "/orientation"):
+            return handleGetOrientation()
+        case ("POST", "/orientation"):
+            return await handleSetOrientation(body: request.jsonBody)
+        case ("GET", "/appearance"):
+            return handleGetAppearance()
+        case ("POST", "/appearance"):
+            return handleSetAppearance(body: request.jsonBody)
+        case ("POST", "/shake"):
+            return handleShake()
+        case ("GET", "/logs"):
+            return handleLogs(request: request)
+        case ("POST", "/screenshot-compare"):
+            return handleScreenshotCompare(body: request.jsonBody)
         case ("GET", "/text-inputs"):
             return handleTextInputs()
         case ("GET", "/wire-roundtrip"):
@@ -277,6 +295,177 @@ final class MCPHTTPHandler {
         ])
     }
 
+    private func handleScreen(outline: Bool) -> MCPHTTPResponse {
+        let appInfo = LKAppInfo.currentInfo(withScreenshot: false, icon: false, localIdentifiers: nil)
+        var data: [String: Any] = [
+            "appName": appInfo.appName ?? "",
+            "bundleId": appInfo.appBundleIdentifier ?? "",
+            "screenWidth": appInfo.screenWidth,
+            "screenHeight": appInfo.screenHeight,
+            "screenScale": appInfo.screenScale,
+            "viewControllers": visibleViewControllerSummaries(),
+            "alert": presentedAlertSummary() ?? NSNull(),
+            "tapTargets": collectedTapTargets(),
+        ]
+        if outline {
+            let items = LKHierarchyInfo.staticInfo(withLookinVersion: nil).displayItems ?? []
+            data["outline"] = items.map { outlineNode(from: $0) }
+        }
+        return .ok(data: data)
+    }
+
+    private func visibleViewControllerSummaries() -> [[String: Any]] {
+        var summaries: [[String: Any]] = []
+        var seen: [ObjectIdentifier] = []
+        for window in LKS_MultiplatformAdapter.allWindows() {
+            guard let root = window.rootViewController else { continue }
+            appendViewController(root, isModal: false, into: &summaries, seen: &seen)
+        }
+        return summaries
+    }
+
+    private func appendViewController(
+        _ viewController: UIViewController,
+        isModal: Bool,
+        into summaries: inout [[String: Any]],
+        seen: inout [ObjectIdentifier]
+    ) {
+        let identity = ObjectIdentifier(viewController)
+        if seen.contains(identity) { return }
+        seen.append(identity)
+        summaries.append(viewControllerSummary(viewController, isModal: isModal))
+
+        if let presented = viewController.presentedViewController {
+            appendViewController(presented, isModal: true, into: &summaries, seen: &seen)
+            return
+        }
+        if let navigation = viewController as? UINavigationController,
+           let visible = navigation.visibleViewController,
+           visible !== navigation {
+            appendViewController(visible, isModal: false, into: &summaries, seen: &seen)
+            return
+        }
+        if let tabs = viewController as? UITabBarController, let selected = tabs.selectedViewController {
+            appendViewController(selected, isModal: false, into: &summaries, seen: &seen)
+        }
+    }
+
+    private func viewControllerSummary(_ viewController: UIViewController, isModal: Bool) -> [String: Any] {
+        var dict: [String: Any] = [
+            "className": NSStringFromClass(type(of: viewController)),
+            "isModal": isModal,
+            "isBeingPresented": viewController.isBeingPresented,
+        ]
+        if let title = viewController.title, !title.isEmpty {
+            dict["title"] = title
+        } else if let title = viewController.navigationItem.title, !title.isEmpty {
+            dict["title"] = title
+        }
+        return dict
+    }
+
+    private func presentedAlertSummary() -> [String: Any]? {
+        for window in LKS_MultiplatformAdapter.allWindows() {
+            var candidate: UIViewController? = window.rootViewController
+            var guardCount = 0
+            while let viewController = candidate, guardCount < 32 {
+                guardCount += 1
+                if let alert = viewController as? UIAlertController {
+                    return alertSummary(alert)
+                }
+                if let presented = viewController.presentedViewController {
+                    candidate = presented
+                    continue
+                }
+                if let navigation = viewController as? UINavigationController {
+                    candidate = navigation.visibleViewController
+                    continue
+                }
+                if let tabs = viewController as? UITabBarController {
+                    candidate = tabs.selectedViewController
+                    continue
+                }
+                break
+            }
+        }
+        return nil
+    }
+
+    private func alertSummary(_ alert: UIAlertController) -> [String: Any] {
+        let actions: [[String: Any]] = alert.actions.map { action in
+            var dict: [String: Any] = [
+                "title": action.title ?? "",
+                "style": alertActionStyleName(action.style),
+                "enabled": action.isEnabled,
+            ]
+            return dict
+        }
+        var dict: [String: Any] = [
+            "className": NSStringFromClass(type(of: alert)),
+            "style": alert.preferredStyle == .actionSheet ? "actionSheet" : "alert",
+            "actions": actions,
+        ]
+        if let title = alert.title, !title.isEmpty {
+            dict["title"] = title
+        }
+        if let message = alert.message, !message.isEmpty {
+            dict["message"] = message
+        }
+        return dict
+    }
+
+    private func alertActionStyleName(_ style: UIAlertAction.Style) -> String {
+        switch style {
+        case .cancel: return "cancel"
+        case .destructive: return "destructive"
+        default: return "default"
+        }
+    }
+
+    private func outlineNode(from item: LKDisplayItem) -> [String: Any] {
+        var dict: [String: Any] = [:]
+        let displayObject = item.displayingObject()
+        dict["oid"] = displayObject?.oid ?? 0
+        dict["className"] = displayObject?.rawClassName() ?? ""
+        if let title = item.customDisplayTitle, !title.isEmpty {
+            dict["title"] = title
+        }
+        if let viewObject = item.viewObject,
+           let view = NSObject.lks_object(withOid: viewObject.oid) as? UIView {
+            if let label = view.accessibilityLabel, !label.isEmpty {
+                dict["accessibilityLabel"] = label
+            }
+            if let identifier = view.accessibilityIdentifier, !identifier.isEmpty {
+                dict["accessibilityIdentifier"] = identifier
+            }
+            if let text = outlineText(for: view), !text.isEmpty {
+                dict["text"] = text
+            }
+        }
+        let children = (item.subitems ?? []).map { outlineNode(from: $0) }
+        if !children.isEmpty {
+            dict["children"] = children
+        }
+        return dict
+    }
+
+    private func outlineText(for view: UIView) -> String? {
+        if let label = view as? UILabel {
+            return label.text
+        }
+        if let field = view as? UITextField {
+            if let text = field.text, !text.isEmpty { return text }
+            return field.placeholder
+        }
+        if let textView = view as? UITextView {
+            return textView.text
+        }
+        if let control = view as? UIControl {
+            return controlTitle(for: control)
+        }
+        return nil
+    }
+
     private func serialize(item: LKDisplayItem) -> [String: Any] {
         var dict: [String: Any] = [:]
 
@@ -302,12 +491,17 @@ final class MCPHTTPHandler {
         if let viewObject = item.viewObject,
            let view = NSObject.lks_object(withOid: viewObject.oid) as? UIView {
             dict.merge(mcpViewInteractionFields(for: view)) { _, new in new }
+            if let host = view.lks_findHostViewController() {
+                dict["hostViewController"] = NSStringFromClass(type(of: host))
+            }
         } else {
             dict["enabled"] = true
         }
 
         let children = (item.subitems ?? []).map { serialize(item: $0) }
-        dict["children"] = children
+        if !children.isEmpty {
+            dict["children"] = children
+        }
         return dict
     }
 
@@ -403,8 +597,22 @@ final class MCPHTTPHandler {
     }
 
     private func handleScreenshot(oid: UInt) -> MCPHTTPResponse {
+        switch capturePNG(oid: oid) {
+        case .failure(let response):
+            return response
+        case .image(let png, let width, let height):
+            return .ok(data: [
+                "imageBase64": png.base64EncodedString(),
+                "mimeType": "image/png",
+                "width": width,
+                "height": height,
+            ])
+        }
+    }
+
+    func capturePNG(oid: UInt) -> MCPCaptureResult {
         guard let obj = NSObject.lks_object(withOid: oid) else {
-            return .error(message: "Object with oid \(oid) not found", statusCode: 404)
+            return .failure(.error(message: "Object with oid \(oid) not found", statusCode: 404))
         }
 
         let layer: CALayer?
@@ -417,33 +625,28 @@ final class MCPHTTPHandler {
         }
 
         guard let layer else {
-            return .error(message: "Object is not a UIView or CALayer", statusCode: 400)
+            return .failure(.error(message: "Object is not a UIView or CALayer", statusCode: 400))
         }
 
         let bounds = layer.bounds
         if bounds.isEmpty {
-            return .error(message: "Layer has empty bounds, cannot capture screenshot", statusCode: 400)
+            return .failure(.error(message: "Layer has empty bounds, cannot capture screenshot", statusCode: 400))
         }
 
         UIGraphicsBeginImageContextWithOptions(bounds.size, false, UIScreen.main.scale)
         defer { UIGraphicsEndImageContext() }
 
         guard let ctx = UIGraphicsGetCurrentContext() else {
-            return .error(message: "Failed to create graphics context", statusCode: 500)
+            return .failure(.error(message: "Failed to create graphics context", statusCode: 500))
         }
 
         layer.render(in: ctx)
         guard let image = UIGraphicsGetImageFromCurrentImageContext(),
               let pngData = image.pngData() else {
-            return .error(message: "Failed to render layer", statusCode: 500)
+            return .failure(.error(message: "Failed to render layer", statusCode: 500))
         }
 
-        return .ok(data: [
-            "imageBase64": pngData.base64EncodedString(),
-            "mimeType": "image/png",
-            "width": bounds.width,
-            "height": bounds.height,
-        ])
+        return .image(data: pngData, width: bounds.width, height: bounds.height)
     }
 
     // MARK: - GET /text-inputs
@@ -460,15 +663,19 @@ final class MCPHTTPHandler {
     // MARK: - GET /tap-targets
 
     private func handleTapTargets() -> MCPHTTPResponse {
-        let allWindows = LKS_MultiplatformAdapter.allWindows()
-        guard !allWindows.isEmpty else {
+        guard !LKS_MultiplatformAdapter.allWindows().isEmpty else {
             return .error(message: "No windows found", statusCode: 503)
         }
+        let targets = collectedTapTargets()
+        return .ok(data: ["count": targets.count, "targets": targets])
+    }
+
+    func collectedTapTargets() -> [[String: Any]] {
         var targets: [[String: Any]] = []
-        for window in allWindows {
+        for window in LKS_MultiplatformAdapter.allWindows() {
             collectTapTargets(in: window, window: window, targets: &targets)
         }
-        return .ok(data: ["count": targets.count, "targets": targets])
+        return targets
     }
 
     private func collectTapTargets(in view: UIView, window: UIWindow, targets: inout [[String: Any]]) {
